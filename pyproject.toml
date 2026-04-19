@@ -6,4 +6,5 @@ dependencies = [
     "google-auth>=2.49.2",
     "gspread>=6.2.1",
     "psycopg2>=2.9.11",
+    "pytest>=9.0.3",
 ]
