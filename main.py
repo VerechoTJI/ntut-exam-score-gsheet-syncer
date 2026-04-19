@@ -340,7 +340,8 @@ def main(dry_run=False):
     # 2. Connect to the Google Sheet
     SHEET_URL = os.getenv("SHEET_URL")
     spreadsheet = client.open_by_url(SHEET_URL)
-    worksheet = spreadsheet.worksheet("1222")
+    SHEET_TITLE = os.getenv("SHEET_TITLE")
+    worksheet = spreadsheet.worksheet(SHEET_TITLE)
 
     conn = None
     cur = None
