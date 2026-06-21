@@ -5,21 +5,36 @@ import ast
 def parse_puzzle_results(val):
     if val is None:
         return {}
+    parsed = {}
     if isinstance(val, dict):
+        parsed = val
+    elif isinstance(val, (list, tuple)):
         return val
-    if isinstance(val, (list, tuple)):
-        return val
-    if isinstance(val, str):
+    elif isinstance(val, str):
         s = val.strip()
         try:
-            return json.loads(s)
+            parsed = json.loads(s)
         except Exception:
-            pass
-        try:
-            return ast.literal_eval(s)
-        except Exception:
-            return {}
-    return {}
+            try:
+                parsed = ast.literal_eval(s)
+            except Exception:
+                pass
+
+    if isinstance(parsed, dict):
+        normalized = {}
+        for k, v in parsed.items():
+            k_str = str(k).upper()
+            if k_str.startswith("Q"):
+                try:
+                    new_k = str(int(k_str[1:]) - 1)
+                    normalized[new_k] = v
+                except ValueError:
+                    normalized[k] = v
+            else:
+                normalized[k] = v
+        return normalized
+        
+    return parsed
 
 
 def is_test_passed(test):

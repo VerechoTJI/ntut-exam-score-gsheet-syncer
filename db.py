@@ -1,72 +1,44 @@
 import os
-import psycopg2
+import requests
 from dotenv import load_dotenv
-from utils import pick_column
-
 
 def fetch_scoreboard_rows(limit=None):
     load_dotenv()
-    conn = None
+    
+    api_url = os.getenv("BACKEND_API_URL")
+    admin_token = os.getenv("ADMIN_TOKEN")
+    
+    if not api_url or not admin_token:
+        print("Error: BACKEND_API_URL or ADMIN_TOKEN not set in .env")
+        return [], []
+        
+    headers = {
+        "Authorization": f"Bearer {admin_token}"
+    }
+    
     try:
-        conn = psycopg2.connect(
-            dbname=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASS"),
-            host=os.getenv("DB_HOST"),
-            port=os.getenv("DB_PORT"),
-        )
-        cur = conn.cursor()
-
-        cur.execute("SELECT * FROM score_boards LIMIT 0;")
-        available_cols = [desc[0] for desc in cur.description]
-
-        student_id_col = pick_column(
-            available_cols, ["student_ID", "student_id", "studentId"]
-        )
-        puzzle_results_col = pick_column(
-            available_cols, ["puzzle_results", "puzzleResults", "puzzles", "results"]
-        )
-        puzzle_amount_col = (
-            pick_column(available_cols, ["puzzle_amount"])
-            or pick_column(available_cols, ["puzzles_amount"])
-            or None
-        )
-        subtask_amount_col = pick_column(available_cols, ["subtask_amount"])
-        id_col = pick_column(available_cols, ["id"])
-
-        selected_cols = []
-        for c in (
-            student_id_col,
-            puzzle_results_col,
-            puzzle_amount_col,
-            subtask_amount_col,
-            id_col,
-        ):
-            if c and c not in selected_cols:
-                selected_cols.append(c)
-
-        if not selected_cols:
-            selected_cols = available_cols
-
-        def quote(c):
-            return '"' + str(c).replace('"', '""') + '"'
-
-        select_clause = ", ".join(quote(c) for c in selected_cols)
-        query = f"SELECT {select_clause} FROM score_boards"
+        # Fetch data from the API
+        response = requests.get(f"{api_url}/admin/scores", headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data:
+            return [], []
+            
+        # The data is expected to be a list of dicts (ScoreBoard model)
+        # Apply limit if specified
         if limit:
-            query += f" LIMIT {int(limit)}"
-
-        cur.execute(query)
-        rows = cur.fetchall()
-        row_dicts = [dict(zip(selected_cols, row)) for row in rows]
-        try:
-            cur.close()
-        except Exception:
-            pass
-        return row_dicts, selected_cols
-    finally:
-        if conn:
             try:
-                conn.close()
-            except Exception:
+                limit_int = int(limit)
+                data = data[:limit_int]
+            except ValueError:
                 pass
+                
+        # Extract selected columns from the keys of the first item
+        selected_cols = list(data[0].keys())
+        
+        return data, selected_cols
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data from backend API: {e}")
+        return [], []

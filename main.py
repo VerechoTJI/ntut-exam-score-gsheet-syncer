@@ -37,12 +37,12 @@ def sync_once(dry_run=False):
 
     db_missing_required = []
     db_student_col = (
-        pick_column(selected_cols, ["student_ID", "student_id", "學號", "studentId"])
+        pick_column(selected_cols, ["student_ID", "student_id", "學號", "studentId", "testId"])
         if selected_cols
         else None
     )
     db_puzzle_amount_col = (
-        pick_column(selected_cols, ["puzzle_amount", "puzzles_amount"])
+        pick_column(selected_cols, ["puzzle_amount", "puzzles_amount", "puzzleAmount"])
         if selected_cols
         else None
     )
@@ -92,7 +92,7 @@ def sync_once(dry_run=False):
 
     if not puzzle_indices:
         amt_col = (
-            pick_column(selected_cols, ["puzzle_amount", "puzzles_amount"])
+            pick_column(selected_cols, ["puzzle_amount", "puzzles_amount", "puzzleAmount"])
             if selected_cols
             else None
         )
