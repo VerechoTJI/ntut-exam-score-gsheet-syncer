@@ -7,6 +7,8 @@ Synchronizes scoreboard rows from the `ntut-exam-v2` backend API into a Google S
 - Export per-student puzzle/subtask pass flags from backend API to Google Sheets.
 - Dry-run mode for previewing changes without writing to the sheet.
 - Flexible parsing for JSON-serialized `puzzleResults`.
+- Compare scores with current sheet values and batch-write only changed cells; skip the write request when nothing changed.
+- Clear previous pass flags when the corresponding result becomes unsuccessful, including rows with no remaining passes.
 
 **Requirements:**
 

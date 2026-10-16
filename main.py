@@ -153,14 +153,14 @@ def sync_once(dry_run=False):
             header2.append(str(s))
         header2.append("規則")
 
-    # Preload sheet student ids
+    # Read current scores as well as student ids for change detection.
     if sheet_student_idx is None:
         print(
             "Error: could not find 學號 column in sheet headers. Ensure a column is labeled 學號."
         )
         return 1
 
-    sheet_student_col_vals = worksheet.col_values(sheet_student_idx + 1)
+    sheet_rows = worksheet.get_all_values()
 
     db_student_key = db_student_col
     db_map = {}
@@ -171,9 +171,10 @@ def sync_once(dry_run=False):
 
     rows_updated = 0
     rows_skipped = 0
-    start_col_letter = col_num_to_a1(data_start_col + 1)
     updates = []
-    for idx, cell_val in enumerate(sheet_student_col_vals[2:], start=3):
+    changed_rows = 0
+    for idx, sheet_row in enumerate(sheet_rows[2:], start=3):
+        cell_val = sheet_row[sheet_student_idx] if sheet_student_idx < len(sheet_row) else ""
         sheet_student_id = str(cell_val or "").strip()
         if not sheet_student_id:
             rows_skipped += 1
@@ -188,45 +189,37 @@ def sync_once(dry_run=False):
             r, puzzle_col_name, mapping, data_start_col, last_data_col
         )
 
-        should_update = any(
-            (v is not None and str(v).strip() not in ("", "0", "0.0")) for v in values
-        )
-        if not should_update:
+        row_updates = []
+        for col_idx, value in enumerate(values, start=data_start_col):
+            current = sheet_row[col_idx] if col_idx < len(sheet_row) else ""
+            # Sheets returns strings, while generated pass flags are integers.
+            if str(current) != str(value):
+                row_updates.append({
+                    "range": f"{col_num_to_a1(col_idx + 1)}{idx}",
+                    "values": [[value]],
+                })
+
+        if not row_updates:
             rows_skipped += 1
             continue
 
+        changed_rows += 1
         if dry_run:
-            raw = r.get(puzzle_col_name) if puzzle_col_name else None
-            parsed = parse_puzzle_results(raw)
-            values_str = ",".join(
-                (str(v).strip() if v and str(v).strip() else ".") for v in values
-            )
-            if len(values_str) > 400:
-                non_empty = [
-                    i + data_start_col + 1
-                    for i, v in enumerate(values)
-                    if v and str(v).strip()
-                ]
-                values_display = f"{len(non_empty)} non-empty at cols {non_empty[:10]}{'...' if len(non_empty) > 10 else ''}"
-            else:
-                values_display = values_str
-            print(
-                f"Dry-run: would update row {idx} starting at {start_col_letter} with:"
-            )
-            print(f"  {values_display}")
-        else:
-            updates.append({"range": f"{start_col_letter}{idx}", "values": [values]})
-            rows_updated += 1
+            for update in row_updates:
+                print(f"Dry-run: would update {update['range']} to {update['values'][0][0]!r}")
+        updates.extend(row_updates)
 
     if not dry_run:
         if updates:
             try:
                 worksheet.batch_update(updates)
+                rows_updated = changed_rows
                 print(
-                    f"Batch-updated {len(updates)} rows starting at column {start_col_letter}."
+                    f"Batch-updated {len(updates)} cells across {rows_updated} rows."
                 )
             except Exception as e:
                 print(f"Error during batch update: {e}")
+                return 1
         else:
             print("No rows needed updating (batch skipped).")
 
