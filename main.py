@@ -124,8 +124,6 @@ def sync_once(dry_run=False):
     sheet_puzzle_idxs = set()
     sheet_subtask_counts = {}
     for i, info in enumerate(mapping):
-        if not info:
-            continue
         if info.get("type") in ("subtask", "rule") and info.get("pidx") is not None:
             sheet_puzzle_idxs.add(info.get("pidx"))
             if info.get("type") == "subtask":

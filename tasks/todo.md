@@ -6,6 +6,11 @@ commit. Tasks are sequential; do not start a dependent task before its checkpoin
 
 ## 1. Establish the full offline coverage gate
 
+Completed: 63 offline tests; all 419 production statements and 186 branches
+covered. Exact JSON gate and its negative tests pass. Review: no unresolved
+findings; removed unreachable mapping guard (the builder fills every entry).
+Commit: `test: enforce complete offline branch coverage` (see Git log).
+
 - [ ] Add locked coverage tooling and configuration covering all runtime modules;
   explicitly select offline `tests/` rather than the obsolete live DB diagnostic.
 - [ ] Bring existing runtime behavior to 100% statement/branch coverage, including
@@ -167,7 +172,8 @@ commit. Tasks are sequential; do not start a dependent task before its checkpoin
 | Task | Test/coverage evidence | Review | Commit |
 | --- | --- | --- | --- |
 | Planning | Existing 11 offline tests passed; documentation links and scope checked; runtime coverage not installed | Passed document review; no runtime edits | This planning commit; see Git log |
-| 1–9 | Not started | Not started | — |
+| 1 | 63 tests; 419/419 statements; 186/186 branches; JSON gate passes | Passed | `test: enforce complete offline branch coverage` |
+| 2–9 | Not started | Not started | — |
 | 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11

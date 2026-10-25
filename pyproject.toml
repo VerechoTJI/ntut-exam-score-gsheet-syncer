@@ -1,10 +1,29 @@
 [project]
 name = "ntut-exam-score-gsheet-syncer"
 version = "0.1.0"
+requires-python = ">=3.13"
 dependencies = [
     "dotenv>=0.9.9",
     "google-auth>=2.49.2",
     "gspread>=6.2.1",
     "pytest>=9.0.3",
     "requests>=2.33.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider --basetemp=.test-tmp"
+
+[tool.coverage.run]
+branch = true
+source = ["."]
+omit = ["tests/*", "test_db_parse.py", ".venv/*", ".uv-cache/*", ".test-tmp/*"]
+
+[tool.coverage.report]
+exclude_lines = []
+show_missing = true
+
+[dependency-groups]
+dev = [
+    "coverage>=7.17.0",
 ]

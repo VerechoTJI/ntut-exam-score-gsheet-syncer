@@ -4,3 +4,8 @@ credentials.json
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.uv-cache/
+.test-tmp/
+.coverage
+coverage.json
+htmlcov/
