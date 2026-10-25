@@ -90,6 +90,10 @@ writes, not routine progression through the approved tasks.
 Call authenticated `GET /admin/backup` and upload the returned artifact as a
 binary file. V2 returns `application/vnd.sqlite3`, with a timestamped `.sqlite`
 attachment name and Content-Length; it does not return a textual `.sql` dump.
+Name the uploaded artifact `classroom_timestamp.sqlite`, using the configured
+classroom label and a timezone-qualified timestamp (Asia/Taipei), for example
+`1222_20261026T143000+0800.sqlite`. Do not retain the backend's generic download
+name as the Drive filename. Validate labels so they cannot introduce paths.
 The backend rejects an unset/default admin token with `BACKUP_UNAVAILABLE`.
 Do not reimplement database extraction or modify the backend API.
 

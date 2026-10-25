@@ -1,6 +1,8 @@
 import os
 import requests
+from urllib3.util import Timeout
 from dotenv import load_dotenv
+from retry import run, OperationFailed
 
 def fetch_scoreboard_rows(limit=None):
     load_dotenv()
@@ -18,9 +20,11 @@ def fetch_scoreboard_rows(limit=None):
     
     try:
         # Fetch data from the API
-        response = requests.get(f"{api_url}/admin/scores", headers=headers)
-        response.raise_for_status()
-        data = response.json()
+        def fetch(remaining):
+            response = requests.get(f"{api_url.rstrip('/')}/admin/scores", headers=headers, timeout=Timeout(total=remaining))
+            response.raise_for_status()
+            return response.json()
+        data = run('Fetch backend scores', fetch)
         
         if not data:
             return [], []
@@ -39,6 +43,6 @@ def fetch_scoreboard_rows(limit=None):
         
         return data, selected_cols
         
-    except requests.exceptions.RequestException as e:
+    except OperationFailed as e:
         print(f"Error fetching data from backend API: {e}")
         return [], []

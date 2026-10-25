@@ -115,6 +115,7 @@ def test_get_worksheet(monkeypatch):
     credentials = Mock()
     client = Mock()
     monkeypatch.setattr(sheets.Credentials, 'from_service_account_file', credentials)
+    monkeypatch.setattr(sheets, 'AuthorizedSession', Mock())
     monkeypatch.setattr(sheets.gspread, 'authorize', Mock(return_value=client))
     assert sheets.get_worksheet('url', 'tab') is client.open_by_url.return_value.worksheet.return_value
     client.open_by_url.assert_called_once_with('url')
@@ -190,6 +191,8 @@ def test_cli_modes(monkeypatch, interval, capsys):
     row = {'testId': 's1', 'puzzleResults': [{'subtasks': [['AC']]}]}
     monkeypatch.setattr(db, 'fetch_scoreboard_rows', lambda: ([row], list(row)))
     monkeypatch.setattr(time, 'sleep', Mock(side_effect=KeyboardInterrupt))
-    runpy.run_path(str(Path(main.__file__)), run_name='__main__')
+    with pytest.raises(SystemExit) as error:
+        runpy.run_path(str(Path(main.__file__)), run_name='__main__')
+    assert error.value.code == 0
     assert 'Dry-run:' in capsys.readouterr().out
     ws.batch_update.assert_not_called()

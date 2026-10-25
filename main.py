@@ -12,6 +12,7 @@ from mapping import (
     build_values_for_row,
 )
 from utils import pick_column, col_num_to_a1, parse_puzzle_results, is_test_passed
+from retry import describe
 
 
 def sync_once(dry_run=False):
@@ -216,7 +217,7 @@ def sync_once(dry_run=False):
                     f"Batch-updated {len(updates)} cells across {rows_updated} rows."
                 )
             except Exception as e:
-                print(f"Error during batch update: {e}")
+                print(f"Error during batch update: {describe(e)}")
                 return 1
         else:
             print("No rows needed updating (batch skipped).")
@@ -225,14 +226,14 @@ def sync_once(dry_run=False):
     return 0
 
 
-if __name__ == "__main__":
+def cli(argv=None):
     parser = argparse.ArgumentParser(description="Sync scoreboard to Google Sheets")
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Do not write to Google Sheets; print preview",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     # read INTERVAL from .env in main; pass dry-run flag here
     def _entry():
@@ -254,11 +255,22 @@ if __name__ == "__main__":
             )
             try:
                 while True:
-                    sync_once(dry_run=args.dry_run)
+                    result = sync_once(dry_run=args.dry_run)
+                    if result:
+                        return result
                     time.sleep(interval)
             except KeyboardInterrupt:
                 print("Periodic sync stopped by user")
+                return 0
         else:
             return sync_once(dry_run=args.dry_run)
 
-    _entry()
+    try:
+        return _entry()
+    except Exception as error:
+        print(f'Error: {describe(error)}')
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(cli())

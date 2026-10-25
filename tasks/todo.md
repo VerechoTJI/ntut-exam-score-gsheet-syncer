@@ -24,6 +24,11 @@ Commit: `test: enforce complete offline branch coverage` (see Git log).
 
 ## 2. Bound retries and report the actual cause
 
+Completed: 74 tests and exact 100% production statement/branch coverage. Review
+passed: bounded shared transport, no nested Google retry client, sanitized
+provider causes, late-result rejection and periodic failure exits covered.
+Commit: `fix: bound external retries and propagate sync failures` (see Git log).
+
 - [ ] Share deadline-aware request/retry behavior across backend and Sheets calls:
   exponential backoff, 10-second budget including requests and waits, bounded
   timeouts, no compounded library retry loop.
@@ -139,7 +144,9 @@ Commit: `test: enforce complete offline branch coverage` (see Git log).
   first-run consent, local refresh-token storage, unattended refresh, and clear
   revoked/expired authorization errors. Ignore secrets/token files in Git; retain
   existing service-account credentials for Sheets. Do not change folder sharing.
-- [ ] Upload original database bytes with a timestamp/source identity in its name;
+- [ ] Upload original database bytes named `classroom_timestamp.sqlite`, using
+  the configured classroom and an Asia/Taipei timestamp with timezone; test
+  filename format, label validation and timestamp uniqueness;
   verify returned file identity, destination, size and checksum when supported.
 - [ ] Prevent duplicate creates on retry after lost responses. Report the final
   Drive file URL/ID and exact failure cause; clean temporary files predictably.
@@ -173,7 +180,8 @@ Commit: `test: enforce complete offline branch coverage` (see Git log).
 | --- | --- | --- | --- |
 | Planning | Existing 11 offline tests passed; documentation links and scope checked; runtime coverage not installed | Passed document review; no runtime edits | This planning commit; see Git log |
 | 1 | 63 tests; 419/419 statements; 186/186 branches; JSON gate passes | Passed | `test: enforce complete offline branch coverage` |
-| 2–9 | Not started | Not started | — |
+| 2 | 74 tests; exact 100% statements/branches | Passed | `fix: bound external retries and propagate sync failures` |
+| 3–9 | Not started | Not started | — |
 | 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
