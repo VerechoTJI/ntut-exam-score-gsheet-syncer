@@ -13,15 +13,16 @@ from mapping import (
 )
 from utils import pick_column, col_num_to_a1, parse_puzzle_results, is_test_passed
 from retry import describe
+from exam_config import load_config, question_mapping, normalize_rows, validate_layout
 
 
-def sync_once(dry_run=False):
+def sync_once(dry_run=False, sheet_url=None, config=None, question_map=None):
     load_dotenv()
     # timestamp for this run (UTC ISO)
     ts = datetime.datetime.now().replace(microsecond=0).isoformat() + "Z"
     print(f"Sync run: {ts}")
 
-    SHEET_URL = os.getenv("SHEET_URL")
+    SHEET_URL = sheet_url or os.getenv("SHEET_URL")
     SHEET_TITLE = os.getenv("SHEET_TITLE")
     worksheet = get_worksheet(SHEET_URL, SHEET_TITLE)
 
@@ -59,6 +60,13 @@ def sync_once(dry_run=False):
         for m in db_missing_required:
             print(f"    - {m}")
         return 1
+
+    positions = None
+    if config is not None:
+        positions = question_mapping(config, question_map)
+        if not puzzle_col_name:
+            raise ValueError('Config mapping requires puzzleResults')
+        row_dicts = normalize_rows(row_dicts, puzzle_col_name, config, positions)
 
     # compute puzzle indices and max subtasks
     puzzle_indices = set()
@@ -120,6 +128,8 @@ def sync_once(dry_run=False):
         data_start_col,
         last_data_col,
     ) = build_sheet_mapping(worksheet)
+    if config is not None:
+        validate_layout(mapping, config, positions)
 
     # Determine which puzzles are present on sheet
     sheet_puzzle_idxs = set()
@@ -233,11 +243,23 @@ def cli(argv=None):
         action="store_true",
         help="Do not write to Google Sheets; print preview",
     )
+    parser.add_argument('--sheet-url', help='Override SHEET_URL')
+    parser.add_argument('--config', help='Full exam configuration JSON')
+    parser.add_argument('--question-map', help='JSON: question ID to one-based Sheet group')
     args = parser.parse_args(argv)
 
     # read INTERVAL from .env in main; pass dry-run flag here
     def _entry():
         load_dotenv()
+        options = {'dry_run': args.dry_run}
+        if args.sheet_url:
+            options['sheet_url'] = args.sheet_url
+        if args.config:
+            options['config'] = load_config(args.config)
+        if args.question_map:
+            if not args.config:
+                raise ValueError('--question-map requires --config')
+            options['question_map'] = args.question_map
         interval_val = os.getenv("INTERVAL")
         try:
             interval = (
@@ -255,7 +277,7 @@ def cli(argv=None):
             )
             try:
                 while True:
-                    result = sync_once(dry_run=args.dry_run)
+                    result = sync_once(**options)
                     if result:
                         return result
                     time.sleep(interval)
@@ -263,7 +285,7 @@ def cli(argv=None):
                 print("Periodic sync stopped by user")
                 return 0
         else:
-            return sync_once(dry_run=args.dry_run)
+            return sync_once(**options)
 
     try:
         return _entry()

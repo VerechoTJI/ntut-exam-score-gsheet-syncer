@@ -42,6 +42,11 @@ Commit: `fix: bound external retries and propagate sync failures` (see Git log).
 
 ## 3. Map uploaded questions using config order
 
+Completed: 109 tests; exact 100% production statements/branches. Reviewed schema
+validation, canonical/actual aliases, explicit mapping collisions and pre-write
+layout checks. No unresolved findings. Commit: `feat: map score uploads using
+exam configuration order` (see Git log).
+
 - [ ] Load/validate full exam config; reject connection-only files and malformed,
   duplicate, or inconsistent question/subtask definitions before writes.
 - [ ] Support explicit mapping first, config-order fallback second, canonical
@@ -181,7 +186,8 @@ Commit: `fix: bound external retries and propagate sync failures` (see Git log).
 | Planning | Existing 11 offline tests passed; documentation links and scope checked; runtime coverage not installed | Passed document review; no runtime edits | This planning commit; see Git log |
 | 1 | 63 tests; 419/419 statements; 186/186 branches; JSON gate passes | Passed | `test: enforce complete offline branch coverage` |
 | 2 | 74 tests; exact 100% statements/branches | Passed | `fix: bound external retries and propagate sync failures` |
-| 3–9 | Not started | Not started | — |
+| 3 | 109 tests; exact 100% statements/branches | Passed | `feat: map score uploads using exam configuration order` |
+| 4–9 | Not started | Not started | — |
 | 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11

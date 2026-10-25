@@ -2,7 +2,7 @@ import json
 import ast
 
 
-def parse_puzzle_results(val):
+def parse_puzzle_results(val, normalize=True):
     if val is None:
         return {}
     parsed = {}
@@ -20,7 +20,7 @@ def parse_puzzle_results(val):
             except Exception:
                 pass
 
-    if isinstance(parsed, dict):
+    if isinstance(parsed, dict) and normalize:
         normalized = {}
         for k, v in parsed.items():
             k_str = str(k).upper()
