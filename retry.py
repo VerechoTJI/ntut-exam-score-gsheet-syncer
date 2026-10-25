@@ -18,7 +18,10 @@ def describe(error):
     if response is not None:
         message = f'HTTP {response.status_code}: {message}'
         try:
-            message += f'; provider: {response.json()["error"]}'
+            body = response.json()
+            message += f'; provider: {body["error"]}'
+            if 'code' in body:
+                message += f'; code: {body["code"]}'
         except (ValueError, KeyError, TypeError):
             pass
     token = os.getenv('ADMIN_TOKEN')

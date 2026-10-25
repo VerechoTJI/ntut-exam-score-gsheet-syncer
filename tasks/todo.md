@@ -170,6 +170,12 @@ score workbook workflows and document operations` (see Git log).
 
 ## 10. Download and validate the v2 database snapshot
 
+Completed: 150 tests; exact 100% production statements/branches. Reviewed streamed
+deadline/length checks, header/integrity validation, HTTP/provider codes, and
+cleanup. Windows connection closure fixed and exercised with real synthetic
+SQLite files. No live backend snapshot downloaded. Commit: `feat: download and
+validate v2 SQLite backup snapshots` (see Git log).
+
 - [ ] Download authenticated `GET /admin/backup` as a streamed binary `.sqlite`
   artifact using Task 2's bounded retry policy; preserve backend error codes and
   safe diagnostic detail. Do not save JSON/HTML errors as database backups.
@@ -232,7 +238,8 @@ score workbook workflows and document operations` (see Git log).
 | 7 | 131 tests; exact 100%; native Sheets weights/rules/caps/rounding | Passed | `feat: generate weighted final grades with native formula checks` |
 | 8 | 139 tests; 826/826 statements; 310/310 branches; native batch accepted | Passed | `feat: initialize score workbooks with explicit overwrite confirmation` |
 | 9 | 141 tests; 100%; native full-config formulas and CLI smoke check | Passed | `test: verify complete score workbook workflows and document operations` |
-| 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
+| 10 | 150 tests; 100%; synthetic SQLite validation/cleanup | Passed | `feat: download and validate v2 SQLite backup snapshots` |
+| 11–12 | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of
