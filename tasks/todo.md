@@ -93,6 +93,13 @@ ambiguous worksheets and duplicate/missing identities rejected. Commit:
 
 ## 6. Generate classroom and Combined tabs
 
+Completed: 129 tests; exact 100% production coverage. Native Google Sheets
+synthetic check: reordered classroom rows still match IDs; Combined returns
+2 for duplicate classroom passes and 1 for the other student. Temporary workbook
+ID `10xMgKUcjTbXZoXFX3BOdP5-oa-qqwHbqgiztxmQUgq0` (cleanup after final checks).
+Reviewed formula bounds, text IDs, merges and duplicate-highlighting intent.
+Commit: `feat: generate classroom and combined workbook plans` (see Git log).
+
 - [ ] Build a pure setup plan from config/roster for `1222`, `1223`, `335`, and
   `Combined`, with grouped headers, merged question headings, and text IDs.
 - [ ] Generate ID-matched SUM formulas across all classrooms; preserve values
@@ -200,7 +207,8 @@ ambiguous worksheets and duplicate/missing identities rejected. Commit:
 | 3 | 109 tests; exact 100% statements/branches | Passed | `feat: map score uploads using exam configuration order` |
 | 4 | 114 tests; 628/628 statements; 256/256 branches | Passed | `fix: preserve only system-errored question cells` |
 | 5 | 126 tests; exact 100% statements/branches; actual roster read-only smoke check | Passed | `feat: import validated student identities from Excel rosters` |
-| 6–9 | Not started | Not started | — |
+| 6 | 129 tests; 100% statements/branches; native Sheets sum/reorder checks | Passed | `feat: generate classroom and combined workbook plans` |
+| 7–9 | Not started | Not started | — |
 | 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
