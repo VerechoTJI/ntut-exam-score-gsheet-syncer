@@ -241,6 +241,29 @@ Commit: `feat: schedule independent database backups and document OAuth setup`.
 - Verify: full 100% branch/statement gate, CLI smoke checks, exact-cause logs,
   review, then commit. Never use the reference Sheet as a backup test destination.
 
+## 13. Recreate the reference layout and distribution plot
+
+- [x] Measure reference fonts, dimensions, borders, merges, frozen panes,
+  conditional formats, sidebar placement and chart specification.
+- [x] Replace generic setup styling with the measured profile, adapting question
+  groups/weights to config and retaining six columns between final/raw scores.
+- [x] Add pass/fail counts/percentages, twelve score bands and cumulative counts,
+  and the 338 × 209 two-series line plot; replace old charts before resizing.
+- [x] Restyle the explicitly supplied test ground while preserving individual
+  records and score formulas. Inspect all five tabs visually. Remove an obsolete
+  copied chart whose invalid ranges omitted it from normal chart metadata.
+- [x] Native synthetic checks: 0/1/9/10/19/20/59/60/99/100/110 boundaries,
+  empty-ID exclusion, cumulative totals, percentages and an empty roster.
+  Use `?*` for text IDs because Sheets counts explicitly stored empty strings
+  with `<>`. Temporary test tab removed; no reference mutations or record export.
+- [x] Native test-ground sidebar totals reconcile to 93 students. Header and
+  chart-only screenshots contain no student records.
+- [x] Final offline coverage gate and independent five-axis review passed:
+  177 tests, 1,142/1,142 statements and 390/390 branches covered. Independent
+  review additionally checked 108 synthetic config/roster geometries. Includes
+  the suggested regression assertion that chart deletion precedes grid resizing.
+  Commit: `fix: recreate reference workbook styling and distribution plot`.
+
 ## Execution ledger
 
 | Task | Test/coverage evidence | Review | Commit |
@@ -258,6 +281,7 @@ Commit: `feat: schedule independent database backups and document OAuth setup`.
 | 10 | 150 tests; 100%; synthetic SQLite validation/cleanup | Passed | `feat: download and validate v2 SQLite backup snapshots` |
 | 11 | 163 tests; 100%; live OAuth upload awaits client JSON/sign-in | Passed offline/code review | `feat: authorize user Drive uploads with verified idempotent backups` |
 | 12 | 173 tests; 1048/1048 statements; 364/364 branches; CLI preview passes | Passed code/offline review; live consent/upload pending | `feat: schedule independent database backups and document OAuth setup` |
+| 13 | 177 tests; 1142/1142 statements; 390/390 branches; native band/empty-roster checks; five-tab visual checks | Independent five-axis review passed; 108 synthetic geometries checked | `fix: recreate reference workbook styling and distribution plot` |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of

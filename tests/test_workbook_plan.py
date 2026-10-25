@@ -53,7 +53,7 @@ def test_final_view_weights_caps_and_rounding():
     assert row[5] == "=MAX(SUMIF('Combined'!$A$3:$A$4,$B4,'Combined'!D$3:D$4),F$3)"
     assert row[8] == '=MIN(SUM(D4:E4)*F4+SUM(G4:G4)*H4,I$3)'
     assert row[9] == '=ROUND(SUM(I4),0)'
-    assert row[10] == '=SUM(D4,E4,G4)'
+    assert row[plan['raw_column']] == '=SUM(D4,E4,G4)'
     assert len(plan['rows'][0]) == len(row)
 
 
@@ -65,4 +65,4 @@ def test_multiple_section_caps_above_100():
     config['sections'].append(second)
     plan = final_plan(config, example_roster())
     assert 90 in plan['rows'][2]
-    assert plan['rows'][3][-2] == '=ROUND(SUM(I4,O4),0)'
+    assert plan['rows'][3][plan['final_column']] == '=ROUND(SUM(I4,O4),0)'

@@ -66,9 +66,11 @@ def final_plan(config, roster):
         weights.append(section['maxScore'])
         merges.append((0, 2, section_column, section_column+1))
         sections.append((section_column, section_questions))
-    for title in ('最後成績', '原始分數'):
+    final_column = len(headers)
+    for title in ('最後成績', '', '', '', '', '', '', '原始分數'):
         column = len(headers)
-        merges.append((0, 3, column, column+1))
+        if title:
+            merges.append((0, 3, column, column+1))
         headers.append(title)
         labels.append('')
         weights.append('')
@@ -85,8 +87,10 @@ def final_plan(config, roster):
             terms = [f'SUM({col_num_to_a1(start+1)}{number}:{col_num_to_a1(start+count)}{number})*{col_num_to_a1(start+count+1)}{number}'
                      for start, count in members]
             row[column] = '=MIN(' + '+'.join(terms) + f',{col_num_to_a1(column+1)}$3)'
-        row[-2] = '=ROUND(SUM(' + ','.join(f'{col_num_to_a1(column+1)}{number}' for column, _ in sections) + '),0)'
+        row[final_column] = '=ROUND(SUM(' + ','.join(f'{col_num_to_a1(column+1)}{number}' for column, _ in sections) + '),0)'
         row[-1] = '=SUM(' + ','.join(f'{col_num_to_a1(column+1)}{number}' for column in raw_columns) + ')'
         rows.append(row)
     return {'rows': rows, 'merges': merges, 'frozen_rows': 3,
-            'frozen_columns': 3, 'highlight_duplicates': False}
+            'frozen_columns': 3, 'highlight_duplicates': False,
+            'final_column': final_column, 'raw_column': len(headers)-1,
+            'question_groups': questions, 'section_columns': [c for c, _ in sections]}

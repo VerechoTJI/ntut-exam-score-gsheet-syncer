@@ -76,6 +76,26 @@ environment setting; the explicit-argument requirement applies to setup.
 - Match cross-sheet records by student ID so sorting a classroom tab cannot
   associate a student's results with someone else.
 
+### Reference appearance and distribution plot
+
+Recreate the reference's measured formatting rather than a generic theme. Use
+white backgrounds, black group borders, compact columns, Microsoft JhengHei 14
+for final-view scores/headers, smaller identity text, gray raw scores, hidden
+zero text, and red/green final-grade fills. Keep the six-column sidebar gap
+between final and raw score; derive positions from the configured question and
+section counts. Classroom tabs use 21-pixel rows and 30-pixel score columns;
+the final view uses 32-pixel rows and 33-pixel subtask columns.
+
+Include the yellow departure label, pass/fail counts and percentages, twelve
+descending score bands, cumulative counts, and the reference's 338 × 209 pixel
+two-series line chart titled `分數區段人數統計和累計人數`. Distribution formulas
+use the same full roster range and exclude blank IDs. Treat band labels as text
+so `10-19` cannot become a date. IDs are text; use the `?*` criterion to exclude
+explicitly stored empty strings, which native Sheets counts with `<>`.
+Replacing a setup tab replaces its old charts;
+delete them before resizing to avoid invalid chart references. Keep the design
+reference read-only and do not embed historical student records in code.
+
 ### Question mapping and configuration order
 
 Use an explicit question mapping when supplied. Otherwise flatten

@@ -187,6 +187,14 @@ No live database download or Drive upload has been performed during planning.
 
 ## Current execution boundary
 
+The reference-style follow-up recreates the five-tab appearance and final-view
+statistics sidebar, including the two-series line plot. Positions adapt to the
+exam configuration. Verify measured formatting and chart metadata against the
+reference, visually inspect all five test-ground tabs, and run native synthetic
+score-band boundary/empty-roster checks before the full coverage gate and commit.
+Restyle the supplied test ground in place without replacing individual records;
+keep the reference workbook read-only.
+
 Runtime changes are implemented with per-task tests, coverage gates and commits.
 The first live backup must still be verified after the operator supplies a
 Desktop OAuth client JSON and completes the explicit authorization command.

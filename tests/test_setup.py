@@ -10,7 +10,7 @@ def book_with_existing(content=None):
     book = Mock(title='Target exam sheet', url='https://target.test')
     book.fetch_sheet_metadata.return_value = {'sheets': [
         {'properties': {'sheetId': 7, 'title': '1222', 'gridProperties': {'rowCount': 100, 'columnCount': 26}},
-         'conditionalFormats': [{}]},
+         'conditionalFormats': [{}], 'charts': [{'chartId':99}]},
         {'properties': {'sheetId': 8, 'title': 'Unrelated', 'gridProperties': {'rowCount': 100, 'columnCount': 26}}}]}
     book.worksheet.return_value.get_all_values.return_value = content or []
     return book
@@ -44,6 +44,10 @@ def test_empty_target_setup_preserves_other_tabs(monkeypatch):
     requests = book.batch_update.call_args.args[0]['requests']
     assert sum('addSheet' in r for r in requests) == 4
     assert any('deleteConditionalFormatRule' in r for r in requests)
+    assert any(r.get('deleteEmbeddedObject')=={'objectId':99} for r in requests)
+    chart_delete = next(i for i, r in enumerate(requests) if r.get('deleteEmbeddedObject') == {'objectId': 99})
+    resize = next(i for i, r in enumerate(requests) if r.get('updateSheetProperties', {}).get('properties', {}).get('sheetId') == 7)
+    assert chart_delete < resize
     assert 'Unrelated' not in str(requests)
     assert any('addConditionalFormatRule' in r for r in requests)
     structural = [i for i,r in enumerate(requests) if 'addSheet' in r or 'updateSheetProperties' in r]

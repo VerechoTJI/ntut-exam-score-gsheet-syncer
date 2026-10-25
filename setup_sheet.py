@@ -1,6 +1,7 @@
 """Inspect first, confirm once, then apply one validated Sheets batch."""
 from sheets import get_spreadsheet
 from workbook_plan import CLASSROOMS, classroom_plan, combined_plan, final_plan
+from sheet_style import style_requests
 
 
 def encode(value, formula=False):
@@ -17,8 +18,10 @@ def build_requests(plans, metadata):
     for title, plan in plans.items():
         rows = plan['rows']
         height, width = len(rows), len(rows[0])
-        grid = {'rowCount': max(100, height), 'columnCount': max(26, width),
-                'frozenRowCount': plan['frozen_rows'], 'frozenColumnCount': plan['frozen_columns']}
+        grid = {'rowCount': max(33, height) if title == '成績登記' else max(999, height),
+                'columnCount': width,
+                'frozenRowCount': 3 if title == '成績登記' else 2 if title == '1222' else 0,
+                'frozenColumnCount': 3 if title == '成績登記' else 1 if title == '1222' else 0}
         if title in existing:
             sheet = existing[title]
             sid = sheet['properties']['sheetId']
@@ -33,47 +36,23 @@ def build_requests(plans, metadata):
             ])
             for index in reversed(range(len(sheet.get('conditionalFormats', [])))):
                 structure.append({'deleteConditionalFormatRule': {'sheetId': sid, 'index': index}})
+            for chart in sheet.get('charts', []):
+                structure.append({'deleteEmbeddedObject': {'objectId': chart['chartId']}})
             structure.append({'updateSheetProperties': {'properties': {'sheetId': sid, 'gridProperties': grid},
                                                         'fields': 'gridProperties'}})
         else:
             sid = next_id
             next_id += 1
             structure.append({'addSheet': {'properties': {'sheetId': sid, 'title': title, 'gridProperties': grid}}})
-        area = {'sheetId': sid, 'startRowIndex': 0, 'endRowIndex': height,
-                'startColumnIndex': 0, 'endColumnIndex': width}
         cell_rows = [{'values': [encode(value, isinstance(value, str) and value.startswith('=')
                                        and r >= plan['frozen_rows'] and c >= plan['frozen_columns'])
                                  for c, value in enumerate(row)]} for r, row in enumerate(rows)]
-        requests.extend([
-            {'updateCells': {'start': {'sheetId': sid, 'rowIndex': 0, 'columnIndex': 0},
-                             'rows': cell_rows, 'fields': 'userEnteredValue'}},
-            {'repeatCell': {'range': area, 'cell': {'userEnteredFormat': {
-                'textFormat': {'fontFamily': 'Arial', 'fontSize': 11},
-                'horizontalAlignment': 'CENTER', 'verticalAlignment': 'MIDDLE',
-                'numberFormat': {'type': 'NUMBER', 'pattern': '0.###'}}}, 'fields': 'userEnteredFormat'}},
-            {'repeatCell': {'range': {**area, 'endRowIndex': plan['frozen_rows']},
-                'cell': {'userEnteredFormat': {'backgroundColor': {'red': 0.12, 'green': 0.32, 'blue': 0.30},
-                    'textFormat': {'bold': True, 'foregroundColor': {'red': 1, 'green': 1, 'blue': 1}},
-                    'wrapStrategy': 'WRAP'}},
-                'fields': 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat,userEnteredFormat.wrapStrategy'}},
-            {'repeatCell': {'range': {**area, 'endColumnIndex': plan['frozen_columns']},
-                'cell': {'userEnteredFormat': {'numberFormat': {'type': 'TEXT'}}},
-                'fields': 'userEnteredFormat.numberFormat'}},
-            {'updateDimensionProperties': {'range': {'sheetId': sid, 'dimension': 'COLUMNS', 'startIndex': 0, 'endIndex': width},
-                                           'properties': {'pixelSize': 65}, 'fields': 'pixelSize'}},
-            {'updateDimensionProperties': {'range': {'sheetId': sid, 'dimension': 'COLUMNS', 'startIndex': 0, 'endIndex': plan['frozen_columns']},
-                                           'properties': {'pixelSize': 120}, 'fields': 'pixelSize'}},
-            {'updateDimensionProperties': {'range': {'sheetId': sid, 'dimension': 'ROWS', 'startIndex': 0, 'endIndex': plan['frozen_rows']},
-                                           'properties': {'pixelSize': 40}, 'fields': 'pixelSize'}},
-        ])
+        requests.append({'updateCells': {'start': {'sheetId': sid, 'rowIndex': 0, 'columnIndex': 0},
+                             'rows': cell_rows, 'fields': 'userEnteredValue'}})
         for r1, r2, c1, c2 in plan['merges']:
             requests.append({'mergeCells': {'range': {'sheetId': sid, 'startRowIndex': r1, 'endRowIndex': r2,
                                                      'startColumnIndex': c1, 'endColumnIndex': c2}, 'mergeType': 'MERGE_ALL'}})
-        if plan['highlight_duplicates']:
-            requests.append({'addConditionalFormatRule': {'index': 0, 'rule': {
-                'ranges': [{**area, 'startRowIndex': plan['frozen_rows'], 'endRowIndex': grid['rowCount'], 'startColumnIndex': 1}],
-                'booleanRule': {'condition': {'type': 'NUMBER_GREATER', 'values': [{'userEnteredValue': '1'}]},
-                    'format': {'backgroundColor': {'red': 1, 'green': 0.75, 'blue': 0.75}}}}}})
+        requests.extend(style_requests(title, plan, sid, grid['rowCount']))
     # Resizing later can shift previously written cross-sheet references.
     return structure + requests
 

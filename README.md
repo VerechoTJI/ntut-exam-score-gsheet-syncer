@@ -52,6 +52,10 @@ Setup initializes `1222`, `1223`, `335`, `Combined`, and `成績登記`. It iden
 
 Combined SUMs results by student ID across classrooms, independently of row order. Values above 1 remain visible and are highlighted for investigation. The final view uses exact subtask weights, one failed-rule multiplier per question, section caps, and rounding once at the end. No extra 100-point cap is imposed. Raw score excludes penalties and caps.
 
+Setup reproduces the [reference workbook's layout](https://docs.google.com/spreadsheets/d/12cAocV3Pp6FU-5aDu_zFSh2Gyh3b2x8V2qWdwx0huCY/edit): white headers, black group borders, compact score columns, Microsoft JhengHei score text, smaller identity text, green/red final grades, hidden zero text, and gray raw scores. The question groups and weights adapt to your config. Six columns separate the final and raw scores; the sidebar contains the yellow `已離場` label, pass/fail counts and percentages, score-band counts, and cumulative counts.
+
+The sidebar includes the reference's two-series **line plot**, `分數區段人數統計和累計人數`, at 338 × 209 pixels. Its twelve bands cover `100+`, `90-99` through `10-19`, `1-9`, and `0`. All counts use the same roster extent and exclude blank student IDs. Existing charts on the five setup tabs are replaced after the normal overwrite confirmation. The reference file itself is never modified.
+
 ## Synchronize scores
 
 Copy `.env.template` to `.env` and set backend URL/admin token, Sheet URL, classroom tab, and interval. Set `SHEET_TITLE` to one classroom source tab, not Combined or the final view. One process targets one classroom/backend.
