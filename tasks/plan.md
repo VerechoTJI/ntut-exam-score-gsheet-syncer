@@ -99,9 +99,12 @@ Reuse Task 2's bounded retries and sanitized exact-cause reporting. A retried
 Drive creation must not produce duplicate backup files after an ambiguous
 response; retries must reuse a stable upload identity or reconcile its outcome.
 
-Confirm destination folder and trigger/cadence with the user before choosing
-CLI/scheduling behavior or performing external writes. Do not assume the Sheet
-parent folder is the backup destination. Folder permissions stay unchanged.
+Run database backup on a separate **300-second (5-minute) interval**, independent
+of the score-sync interval. The user-selected destination is
+[db-backup](https://drive.google.com/drive/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq),
+folder ID `1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq`. Do not infer the destination
+from the Sheet parent folder. Folder permissions stay unchanged. This records
+the script's requested schedule; it does not create a Codex automation.
 
 The existing service account can edit shared Sheets, but it cannot own Drive
 files. For backup creation use a writable Shared Drive destination with that
@@ -110,11 +113,14 @@ before downloading a sensitive artifact; do not assume sharing a My Drive
 folder with a service account supplies storage quota.
 Source: [Google Drive folder guide](https://developers.google.com/workspace/drive/api/guides/folder).
 
-## Backup decisions awaiting user input
+## Backup authentication still to verify
 
-- Explicit backup command, backup after score sync, or a separate backup interval.
-- Destination folder URL/ID and whether it is a Shared Drive or personal My Drive.
-- If personal My Drive is selected, user OAuth credentials/setup for the script.
+The connected Drive metadata lookup identifies the selected destination as a
+folder named `db-backup` but returns no Shared Drive ID; access is marked
+`access_not_verified`. Treat folder type and script write capability as unverified
+until a direct metadata/capability probe with the script's own identity confirms
+them. Plan for user OAuth if this is My Drive; do not assume the connected app's
+account or permission is available to the local script.
 
 No live database download or Drive upload has been performed during planning.
 

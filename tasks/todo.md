@@ -137,7 +137,9 @@ commit. Tasks are sequential; do not start a dependent task before its checkpoin
   verify returned file identity, destination, size and checksum when supported.
 - [ ] Prevent duplicate creates on retry after lost responses. Report the final
   Drive file URL/ID and exact failure cause; clean temporary files predictably.
-- Dependencies: 10; user destination/auth choice. Files: Drive uploader, auth
+- Dependencies: 10; script authentication setup. Destination folder is
+  `1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq` (`db-backup`); folder type/write capability
+  still need verification with the script identity. Files: Drive uploader, auth
   helper if required, tests, locked dependency files if needed.
 - Verify: fake Drive responses cover success, quota/permission errors, missing
   folder, shared-drive behavior, checksum mismatch and ambiguous success;
@@ -145,14 +147,15 @@ commit. Tasks are sequential; do not start a dependent task before its checkpoin
 
 ## 12. Wire the agreed backup trigger and verify the complete path
 
-- [ ] Implement the user-selected backup trigger/cadence and explicit destination
-  argument; document whether/how it combines with periodic score syncing.
+- [ ] Run backup on a separate 300-second interval, independent of score syncing,
+  with an explicit destination argument for the selected `db-backup` folder.
+  Test timer independence and prevent overlapping backup runs.
 - [ ] Exercise API snapshot → validated artifact → Drive upload, with runtime
   components and synthetic data; test retries, cancellation and failure exits.
 - [ ] Document setup/auth, artifact format, file naming, cleanup and operator
   commands. Complete authorized disposable integration verification before
   claiming real Drive upload success.
-- Dependencies: 11; user trigger/cadence choice. Files: `main.py`, workflow tests,
+- Dependencies: 11. Files: `main.py`, workflow tests,
   README, `.env.template`, task ledger.
 - Verify: full 100% branch/statement gate, CLI smoke checks, exact-cause logs,
   review, then commit. Never use the reference Sheet as a backup test destination.
@@ -163,7 +166,7 @@ commit. Tasks are sequential; do not start a dependent task before its checkpoin
 | --- | --- | --- | --- |
 | Planning | Existing 11 offline tests passed; documentation links and scope checked; runtime coverage not installed | Passed document review; no runtime edits | This planning commit; see Git log |
 | 1–9 | Not started | Not started | — |
-| 10–12 (backup extension) | Not started; trigger/folder/auth pending | Not started | — |
+| 10–12 (backup extension) | Not started; 300-second interval and folder recorded; script auth pending | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of
