@@ -56,9 +56,9 @@ def test_header_validation_and_grouping():
 
 
 @pytest.mark.parametrize('puzzles,expected', [
-    ({'0': {'subtasks': [{'tests': ['AC'], 'cases': ['WA']}]}}, ['', '']),
-    ({'0': {'subtasks': [42]}}, ['', '']),
-    ({'0': {'subtasks': [['AC']]}}, [1, '']),
+    ({'0': {'subtasks': [{'tests': ['AC'], 'cases': ['WA']}]}}, ['', 1]),
+    ({'0': {'subtasks': [42]}}, ['', 1]),
+    ({'0': {'subtasks': [['AC']]}}, [1, 1]),
     ({'0': 42}, ['', '']), ([], ['', '']),
     ([{'subtasks': [], 'specialRuleResults': [{'passed': False}]}], ['', '']),
     (12, ['', '']),

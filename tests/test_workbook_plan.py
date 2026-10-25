@@ -1,6 +1,6 @@
 import pytest
 
-from workbook_plan import classroom_plan, combined_plan
+from workbook_plan import classroom_plan, combined_plan, final_plan
 
 
 def example_config():
@@ -39,3 +39,30 @@ def test_empty_roster_and_wide_question_groups():
     plan = combined_plan(config, [])
     assert len(plan['rows']) == 2
     assert len(plan['rows'][0]) == 34
+
+
+def test_final_view_weights_caps_and_rounding():
+    config = example_config()
+    plan = final_plan(config, example_roster())
+    assert plan['frozen_rows'] == 3 and plan['frozen_columns'] == 3
+    assert plan['rows'][2][3:6] == [6.25, 18.75, 0.5]
+    assert plan['rows'][2][8] == 30
+    row = plan['rows'][3]
+    assert row[:3] == ['A', '001', 'Alice']
+    assert row[3] == "=SUMIF('Combined'!$A$3:$A$4,$B4,'Combined'!B$3:B$4)*D$3"
+    assert row[5] == "=MAX(SUMIF('Combined'!$A$3:$A$4,$B4,'Combined'!D$3:D$4),F$3)"
+    assert row[8] == '=MIN(SUM(D4:E4)*F4+SUM(G4:G4)*H4,I$3)'
+    assert row[9] == '=ROUND(SUM(I4),0)'
+    assert row[10] == '=SUM(D4,E4,G4)'
+    assert len(plan['rows'][0]) == len(row)
+
+
+def test_multiple_section_caps_above_100():
+    config = example_config()
+    import copy
+    second = copy.deepcopy(config['sections'][0])
+    second.update(id='s2', title='Second', maxScore=90)
+    config['sections'].append(second)
+    plan = final_plan(config, example_roster())
+    assert 90 in plan['rows'][2]
+    assert plan['rows'][3][-2] == '=ROUND(SUM(I4,O4),0)'

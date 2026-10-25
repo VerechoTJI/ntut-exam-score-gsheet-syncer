@@ -152,7 +152,7 @@ def build_values_for_row(r, puzzle_col_name, mapping, data_start_col, last_data_
                     rule_passed = False
                 values.append(1 if rule_passed else "")
             else:
-                values.append("")
+                values.append(1 if isinstance(p_entry, dict) else "")
 
         else:
             values.append("")

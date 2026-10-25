@@ -108,7 +108,8 @@ def test_sync_and_cli_config_mapping(monkeypatch, tmp_path, config):
                      '--sheet-url', 'https://sheet.test']) == 0
     get.assert_called_once_with('https://sheet.test', None)
     assert ws.batch_update.call_args.args[0] == [
-        {'range': 'B3', 'values': [[1]]}, {'range': 'D3', 'values': [[1]]}]
+        {'range': 'B3', 'values': [[1]]}, {'range': 'C3', 'values': [[1]]},
+        {'range': 'D3', 'values': [[1]]}, {'range': 'E3', 'values': [[1]]}]
     assert main.cli(['--question-map', str(mapping)]) == 1
     monkeypatch.setattr(main, 'fetch_scoreboard_rows', lambda: (
         [{'testId': 's1', 'puzzleAmount': 2}], ['testId', 'puzzleAmount']))

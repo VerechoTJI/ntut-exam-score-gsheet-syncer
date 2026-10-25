@@ -112,6 +112,13 @@ Commit: `feat: generate classroom and combined workbook plans` (see Git log).
 
 ## 7. Generate the final scoring view
 
+Completed: 131 tests; exact 100% production coverage. Native Google Sheets
+checks verified weighted duplicate results, failed-rule multiplier, section cap
+and final-only rounding: final/raw pairs 30/32.5 and 6/6.25. Empty rule results
+now upload 1 for an existing question, matching the client's no-penalty policy;
+missing question entries still stay blank. Review passed with this correction.
+Commit: `feat: generate weighted final grades with native formula checks`.
+
 - [ ] Generate `成績登記` with identities, exact weights, rule multipliers,
   section caps, raw score, and final score, linked to Combined by student ID.
 - [ ] Match on-machine scoring: empty rules mean no penalty, one multiplier per
@@ -208,7 +215,8 @@ Commit: `feat: generate classroom and combined workbook plans` (see Git log).
 | 4 | 114 tests; 628/628 statements; 256/256 branches | Passed | `fix: preserve only system-errored question cells` |
 | 5 | 126 tests; exact 100% statements/branches; actual roster read-only smoke check | Passed | `feat: import validated student identities from Excel rosters` |
 | 6 | 129 tests; 100% statements/branches; native Sheets sum/reorder checks | Passed | `feat: generate classroom and combined workbook plans` |
-| 7–9 | Not started | Not started | — |
+| 7 | 131 tests; exact 100%; native Sheets weights/rules/caps/rounding | Passed | `feat: generate weighted final grades with native formula checks` |
+| 8–9 | Not started | Not started | — |
 | 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
