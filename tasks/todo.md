@@ -114,12 +114,56 @@ commit. Tasks are sequential; do not start a dependent task before its checkpoin
 - Verify: duplicate classrooms, reordered IDs, system-error question, retry
   exhaustion, cancellation and successful rerun; full gate/review/commit.
 
+## 10. Download and validate the v2 database snapshot
+
+- [ ] Download authenticated `GET /admin/backup` as a streamed binary `.sqlite`
+  artifact using Task 2's bounded retry policy; preserve backend error codes and
+  safe diagnostic detail. Do not save JSON/HTML errors as database backups.
+- [ ] Validate nonempty complete download, available Content-Length, SQLite header
+  and read-only integrity; use a safe filename and controlled temporary storage.
+- [ ] Test 401/403, 503 BACKUP_UNAVAILABLE, 500 BACKUP_FAILED, interrupted streams,
+  truncation, malformed content, timeout/recovery, and cleanup paths.
+- Dependencies: 2 (execute after 9). Files: backup downloader, tests, shared
+  request helper only if required.
+- Verify: synthetic SQLite fixtures with no private student data; all failure
+  branches and no partial-file uploads; full gate/review/commit.
+
+## 11. Upload validated snapshots to the explicit Drive folder
+
+- [ ] Resolve the chosen folder and authentication model: existing service account
+  for Shared Drives, user OAuth for My Drive. Confirm folder write capability;
+  do not change sharing or make the backup public.
+- [ ] Upload original database bytes with a timestamp/source identity in its name;
+  verify returned file identity, destination, size and checksum when supported.
+- [ ] Prevent duplicate creates on retry after lost responses. Report the final
+  Drive file URL/ID and exact failure cause; clean temporary files predictably.
+- Dependencies: 10; user destination/auth choice. Files: Drive uploader, auth
+  helper if required, tests, locked dependency files if needed.
+- Verify: fake Drive responses cover success, quota/permission errors, missing
+  folder, shared-drive behavior, checksum mismatch and ambiguous success;
+  full gate/review/commit.
+
+## 12. Wire the agreed backup trigger and verify the complete path
+
+- [ ] Implement the user-selected backup trigger/cadence and explicit destination
+  argument; document whether/how it combines with periodic score syncing.
+- [ ] Exercise API snapshot → validated artifact → Drive upload, with runtime
+  components and synthetic data; test retries, cancellation and failure exits.
+- [ ] Document setup/auth, artifact format, file naming, cleanup and operator
+  commands. Complete authorized disposable integration verification before
+  claiming real Drive upload success.
+- Dependencies: 11; user trigger/cadence choice. Files: `main.py`, workflow tests,
+  README, `.env.template`, task ledger.
+- Verify: full 100% branch/statement gate, CLI smoke checks, exact-cause logs,
+  review, then commit. Never use the reference Sheet as a backup test destination.
+
 ## Execution ledger
 
 | Task | Test/coverage evidence | Review | Commit |
 | --- | --- | --- | --- |
 | Planning | Existing 11 offline tests passed; documentation links and scope checked; runtime coverage not installed | Passed document review; no runtime edits | This planning commit; see Git log |
 | 1–9 | Not started | Not started | — |
+| 10–12 (backup extension) | Not started; trigger/folder/auth pending | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of

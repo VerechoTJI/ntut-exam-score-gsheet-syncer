@@ -77,13 +77,46 @@ Baseline before implementation: 11 tests pass; coverage tooling is not installed
 
 See [todo.md](todo.md) for acceptance criteria, dependencies, and expected files.
 
-`1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9`
+`1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12`
 
 Task 1 establishes the full baseline gate; Task 2 exercises failure recovery;
 Tasks 3–4 complete upload semantics; Tasks 5–8 deliver setup; Task 9 verifies the
 whole workflow. At each checkpoint, tests/review must pass before its commit.
 Human involvement is needed only for unresolved requirements or actual external
 writes, not routine progression through the approved tasks.
+
+## Added scope: v2 database backup to Google Drive
+
+Call authenticated `GET /admin/backup` and upload the returned artifact as a
+binary file. V2 returns `application/vnd.sqlite3`, with a timestamped `.sqlite`
+attachment name and Content-Length; it does not return a textual `.sql` dump.
+The backend rejects an unset/default admin token with `BACKUP_UNAVAILABLE`.
+Do not reimplement database extraction or modify the backend API.
+
+Tasks 10–12 add validated downloading, Drive upload, and complete workflow tests.
+They inherit the same 100% statement/branch coverage, review, and commit gates.
+Reuse Task 2's bounded retries and sanitized exact-cause reporting. A retried
+Drive creation must not produce duplicate backup files after an ambiguous
+response; retries must reuse a stable upload identity or reconcile its outcome.
+
+Confirm destination folder and trigger/cadence with the user before choosing
+CLI/scheduling behavior or performing external writes. Do not assume the Sheet
+parent folder is the backup destination. Folder permissions stay unchanged.
+
+The existing service account can edit shared Sheets, but it cannot own Drive
+files. For backup creation use a writable Shared Drive destination with that
+service account, or user OAuth for My Drive. Verify destination type and auth
+before downloading a sensitive artifact; do not assume sharing a My Drive
+folder with a service account supplies storage quota.
+Source: [Google Drive folder guide](https://developers.google.com/workspace/drive/api/guides/folder).
+
+## Backup decisions awaiting user input
+
+- Explicit backup command, backup after score sync, or a separate backup interval.
+- Destination folder URL/ID and whether it is a Shared Drive or personal My Drive.
+- If personal My Drive is selected, user OAuth credentials/setup for the script.
+
+No live database download or Drive upload has been performed during planning.
 
 ## Verification strategy
 
