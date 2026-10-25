@@ -16,5 +16,6 @@ def no_live_configuration(monkeypatch):
     monkeypatch.setattr(retry, 'sleep', lambda delay: now.__setitem__(0, now[0] + delay))
     monkeypatch.setattr(db, 'load_dotenv', lambda: None)
     monkeypatch.setattr(main, 'load_dotenv', lambda: None)
-    for name in ('SHEET_URL', 'SHEET_TITLE', 'BACKEND_API_URL', 'ADMIN_TOKEN', 'INTERVAL'):
+    for name in ('SHEET_URL', 'SHEET_TITLE', 'BACKEND_API_URL', 'ADMIN_TOKEN', 'INTERVAL',
+                 'BACKUP_FOLDER', 'BACKUP_INTERVAL', 'CLASSROOM'):
         monkeypatch.delenv(name, raising=False)

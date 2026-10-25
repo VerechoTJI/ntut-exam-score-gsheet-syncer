@@ -44,12 +44,17 @@ def request(session, label, method, url, allow_conflict=False, **kwargs):
     return retry.run(label, attempt)
 
 
-def upload_backup(session, artifact, destination, name):
+def writable_folder(session, destination):
     folder = folder_id(destination)
     info = request(session, 'Inspect backup folder', 'GET', API+'/'+folder,
                    params={'fields':'id,mimeType,capabilities(canAddChildren)', 'supportsAllDrives':'true'}).json()
     require(info.get('mimeType') == 'application/vnd.google-apps.folder'
             and info.get('capabilities',{}).get('canAddChildren'), 'Backup folder is not writable by the OAuth user')
+    return folder
+
+
+def upload_backup(session, artifact, destination, name):
+    folder = writable_folder(session, destination)
     ids = request(session, 'Allocate backup file ID', 'GET', API+'/generateIds',
                   params={'count':1,'space':'drive','type':'files'}).json().get('ids')
     require(isinstance(ids,list) and len(ids)==1 and isinstance(ids[0],str), 'Drive did not return a file ID')

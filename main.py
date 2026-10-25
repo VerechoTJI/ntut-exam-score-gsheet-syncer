@@ -17,6 +17,10 @@ from exam_config import load_config, question_mapping, normalize_rows, validate_
 from question_errors import errored_questions
 from roster import read_roster
 from setup_sheet import setup_workbook
+from backup_service import backup_once
+from drive_auth import user_credentials
+from scheduler import run_jobs
+from exam_config import number
 
 
 def sync_once(dry_run=False, sheet_url=None, config=None, question_map=None):
@@ -27,6 +31,8 @@ def sync_once(dry_run=False, sheet_url=None, config=None, question_map=None):
 
     SHEET_URL = sheet_url or os.getenv("SHEET_URL")
     SHEET_TITLE = os.getenv("SHEET_TITLE")
+    if SHEET_TITLE in ('Combined', '成績登記'):
+        raise ValueError('Score uploads must target a classroom tab, not a computed grade view')
     worksheet = get_worksheet(SHEET_URL, SHEET_TITLE)
 
     # Fetch DB rows and selected columns
@@ -261,16 +267,31 @@ def cli(argv=None):
     parser.add_argument('--sheet-url', help='Override SHEET_URL')
     parser.add_argument('--config', help='Full exam configuration JSON')
     parser.add_argument('--question-map', help='JSON: question ID to one-based Sheet group')
-    parser.add_argument('--setup-sheet', action='store_true', help='Initialize five workbook tabs')
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--setup-sheet', action='store_true', help='Initialize five workbook tabs')
+    modes.add_argument('--authorize-drive', action='store_true', help='One-time user OAuth consent for backups')
+    modes.add_argument('--backup-only', action='store_true', help='Run database backups without score sync')
+    parser.add_argument('--backup-folder', help='Enable backups into this Drive folder URL/ID')
+    parser.add_argument('--backup-interval', type=float, help='Backup seconds; default 300; 0 runs once')
+    parser.add_argument('--classroom', help='Classroom label for backup filenames; defaults to SHEET_TITLE')
+    parser.add_argument('--oauth-client', default='drive_oauth_client.json', help='Desktop OAuth client JSON')
+    parser.add_argument('--oauth-token', default='drive_token.json', help='Local OAuth refresh credentials')
     parser.add_argument('--roster', help='Excel roster path')
     parser.add_argument('--roster-sheet', help='Roster worksheet name')
     args = parser.parse_args(argv)
     if args.setup_sheet and not all((args.sheet_url, args.config, args.roster)):
         parser.error('--setup-sheet requires explicit --sheet-url, --config and --roster')
+    if args.authorize_drive and args.dry_run:
+        print('Dry-run: would authorize Google Drive; no credentials changed.')
+        return 0
 
     # read INTERVAL from .env in main; pass dry-run flag here
     def _entry():
         load_dotenv()
+        if args.authorize_drive:
+            user_credentials(args.oauth_token, args.oauth_client, interactive=True)
+            print('Google Drive authorization saved locally. Scheduled backups can now run unattended.')
+            return 0
         options = {'dry_run': args.dry_run}
         if args.sheet_url:
             options['sheet_url'] = args.sheet_url
@@ -293,6 +314,22 @@ def cli(argv=None):
         except Exception:
             print(f"Invalid INTERVAL value: {interval_val}")
             interval = 0
+
+        destination = args.backup_folder or os.getenv('BACKUP_FOLDER')
+        if args.backup_only and not destination:
+            raise ValueError('--backup-only requires --backup-folder or BACKUP_FOLDER')
+        if destination:
+            classroom = args.classroom or os.getenv('CLASSROOM') or os.getenv('SHEET_TITLE')
+            if not classroom:
+                raise ValueError('Backup requires --classroom, CLASSROOM or SHEET_TITLE')
+            backup_interval = args.backup_interval if args.backup_interval is not None else float(os.getenv('BACKUP_INTERVAL') or 300)
+            number(backup_interval, 'Backup interval')
+            jobs = []
+            if not args.backup_only:
+                jobs.append((lambda: sync_once(**options), 0 if args.dry_run else interval))
+            jobs.append((lambda: backup_once(destination, classroom, args.oauth_token, args.oauth_client,
+                                             dry_run=args.dry_run), 0 if args.dry_run else backup_interval))
+            return run_jobs(jobs)
 
         if interval and interval > 0:
             print(

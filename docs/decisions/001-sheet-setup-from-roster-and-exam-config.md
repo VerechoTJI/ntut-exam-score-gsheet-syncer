@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted design; implementation tasks are prepared in `tasks/plan.md` and
-`tasks/todo.md`. Runtime changes are not yet implemented.
+Accepted and implemented for workbook setup and score uploads. Implementation
+and verification records are in `tasks/plan.md` and `tasks/todo.md`. Backup user
+OAuth consent and a live upload still require the operator's client JSON/sign-in.
 
 ## Date
 

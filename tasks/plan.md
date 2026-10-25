@@ -1,6 +1,8 @@
 # Plan: Reliable score uploads and complete workbook setup
 
-Prepared 2026-10-26. Status: ready for implementation; no runtime changes yet.
+Prepared 2026-10-26. Status: implementation and offline checks complete; native
+Sheets formulas verified. Live backup OAuth consent/upload remains an operator
+setup check because no Desktop OAuth client JSON/sign-in is available yet.
 
 ## Agreed scope
 
@@ -174,7 +176,10 @@ No live database download or Drive upload has been performed during planning.
 
 ## Current execution boundary
 
-This turn prepares documentation and tasks. Runtime implementation begins with
-Task 1 after the plan is reviewed. The separately requested ID correction to
+Runtime changes are implemented with per-task tests, coverage gates and commits.
+The first live backup must still be verified after the operator supplies a
+Desktop OAuth client JSON and completes the explicit authorization command.
+No periodic score-sync or backup process was started against the real systems.
+The separately requested ID correction to
 `../exam-config.json` was verified to change only puzzle IDs; it cannot be included
 in this repo's commits because the enclosing workspace is not a Git repository.

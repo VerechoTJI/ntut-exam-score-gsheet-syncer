@@ -49,4 +49,8 @@ def download_backup(directory, api_url, token):
         except Exception:
             destination.unlink(missing_ok=True)
             raise
-    return retry.run('Download database backup', attempt)
+    try:
+        return retry.run('Download database backup', attempt)
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise

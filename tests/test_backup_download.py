@@ -82,3 +82,18 @@ def test_missing_settings_and_optional_content_length(monkeypatch,tmp_path):
     data=database_bytes(tmp_path)
     monkeypatch.setattr(backup_download.requests,'get',lambda *a,**k:response_for(data,{'Content-Type':'application/vnd.sqlite3'}))
     assert backup_download.download_backup(tmp_path,'http://backend','token')['size']==len(data)
+
+
+def test_late_integrity_check_cleans_rejected_artifact(monkeypatch,tmp_path):
+    data=database_bytes(tmp_path)
+    now=[0.0]
+    monkeypatch.setattr(backup_download.retry,'monotonic',lambda:now[0])
+    connect=backup_download.sqlite3.connect
+    def slow_connect(*args,**kwargs):
+        now[0]+=11
+        return connect(*args,**kwargs)
+    monkeypatch.setattr(backup_download.sqlite3,'connect',slow_connect)
+    monkeypatch.setattr(backup_download.requests,'get',lambda *a,**k:response_for(data))
+    with pytest.raises(backup_download.retry.OperationFailed):
+        backup_download.download_backup(tmp_path,'http://backend','token')
+    assert not (tmp_path/'snapshot.sqlite').exists()

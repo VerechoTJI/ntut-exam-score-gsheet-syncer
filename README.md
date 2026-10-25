@@ -52,6 +52,66 @@ Only changed cells upload. Ordinary failures clear previous pass flags. An exist
 
 `INTERVAL=0`, empty or negative runs once; positive values poll. Invalid text warns and falls back to one shot. Ctrl+C stops periodic mode. An external operation has a 10-second request/retry budget; exponential delays of 1/2/4 seconds are limited by remaining time. Failures print HTTP/provider/transport causes with tokens redacted. Exhaustion stops even periodic mode with exit status 1. Keep one writer per classroom tab.
 
+## Database backups to My Drive
+
+V2's authenticated `GET /admin/backup` returns a binary `.sqlite` snapshot, not
+a textual SQL dump. Backups use Google **user OAuth**; Sheets continue using the
+existing service account. The backend still uses `ADMIN_TOKEN` from `.env`.
+
+One-time setup:
+
+1. In your [Google Cloud project](https://console.cloud.google.com/apis/credentials),
+   enable Google Drive API and configure the OAuth consent audience. Add your
+   account as a test user if the app is in external Testing mode.
+2. Create an OAuth client with application type **Desktop app**, download its
+   JSON, and save it locally as `drive_oauth_client.json`. This is different from
+   the service-account `credentials.json`.
+3. Run the following and sign in with an account able to upload to the folder:
+
+```powershell
+uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
+```
+
+The script stores `drive_token.json` locally for unattended refresh. Both files
+are ignored by Git. Use `--oauth-client`/`--oauth-token` for alternative paths;
+keep any custom secret paths outside version control too. Runtime never starts
+interactive sign-in automatically: missing/revoked credentials cause a clear
+failure. Full Drive scope supports your existing My Drive destination. Google
+external apps in Testing can issue refresh tokens that expire after seven days;
+check consent/publishing settings or reauthorize before the exam.
+[Google OAuth documentation](https://developers.google.com/identity/protocols/oauth2/).
+
+For your selected folder and 300-second interval:
+
+```powershell
+uv run python main.py --backup-only `
+  --backup-folder "https://drive.google.com/drive/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq" `
+  --backup-interval 300 --classroom 1222
+```
+
+The first backup runs immediately, then the next starts 300 seconds after the
+previous finishes. Add `--dry-run` for one preview without HTTP, credentials or
+uploads. Set `--backup-interval 0` for one real backup to verify sign-in and access.
+
+To run both jobs in one process, omit `--backup-only` and add `--config` for score
+mapping. Score sync uses `INTERVAL`; backup uses its own timer. Jobs are serialized
+so they cannot overlap. Alternatively run the backup-only command alongside your
+score-sync process. `BACKUP_FOLDER`, `BACKUP_INTERVAL`, and `CLASSROOM` may be set
+in `.env`; backups remain disabled when no folder is configured. Classroom falls
+back to `SHEET_TITLE`. The command must remain running; no desktop automation or
+background service is installed.
+
+Files are named `classroom_timestamp.sqlite`, for example
+`1222_20261026T143000123456+0800.sqlite`. Timestamps include microseconds and the
+Asia/Taipei offset. Invalid classroom labels are rejected. Downloaded bytes are
+checked for completeness, SQLite header and read-only integrity before uploading.
+The original bytes are preserved. A stable Drive file ID prevents duplicate
+creates on retry; destination, filename, size and MD5 are verified afterward.
+Success prints the file URL. Temporary local files are removed on success or
+failure. Each external request has the same bounded retry policy as score sync;
+an exhausted operation stops the process. Existing Drive backups are retained.
+[Google upload/retry documentation](https://developers.google.com/workspace/drive/api/guides/manage-uploads).
+
 ## Verification
 
 ```powershell
