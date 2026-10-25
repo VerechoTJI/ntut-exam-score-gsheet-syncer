@@ -130,19 +130,21 @@ commit. Tasks are sequential; do not start a dependent task before its checkpoin
 
 ## 11. Upload validated snapshots to the explicit Drive folder
 
-- [ ] Resolve the chosen folder and authentication model: existing service account
-  for Shared Drives, user OAuth for My Drive. Confirm folder write capability;
-  do not change sharing or make the backup public.
+- [ ] Add Google user OAuth for the selected My Drive folder, including explicit
+  first-run consent, local refresh-token storage, unattended refresh, and clear
+  revoked/expired authorization errors. Ignore secrets/token files in Git; retain
+  existing service-account credentials for Sheets. Do not change folder sharing.
 - [ ] Upload original database bytes with a timestamp/source identity in its name;
   verify returned file identity, destination, size and checksum when supported.
 - [ ] Prevent duplicate creates on retry after lost responses. Report the final
   Drive file URL/ID and exact failure cause; clean temporary files predictably.
-- Dependencies: 10; script authentication setup. Destination folder is
-  `1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq` (`db-backup`); folder type/write capability
-  still need verification with the script identity. Files: Drive uploader, auth
+- Dependencies: 10. Destination folder is
+  `1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq` (`db-backup`, My Drive). User OAuth is the
+  accepted upload identity; validate its folder capability at runtime. Files: Drive uploader, auth
   helper if required, tests, locked dependency files if needed.
-- Verify: fake Drive responses cover success, quota/permission errors, missing
-  folder, shared-drive behavior, checksum mismatch and ambiguous success;
+- Verify: fake OAuth/Drive responses cover first consent, cached credentials,
+  refresh/revocation, missing client config, success, quota/permission errors,
+  missing folder, checksum mismatch and ambiguous success;
   full gate/review/commit.
 
 ## 12. Wire the agreed backup trigger and verify the complete path
@@ -166,7 +168,7 @@ commit. Tasks are sequential; do not start a dependent task before its checkpoin
 | --- | --- | --- | --- |
 | Planning | Existing 11 offline tests passed; documentation links and scope checked; runtime coverage not installed | Passed document review; no runtime edits | This planning commit; see Git log |
 | 1–9 | Not started | Not started | — |
-| 10–12 (backup extension) | Not started; 300-second interval and folder recorded; script auth pending | Not started | — |
+| 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of

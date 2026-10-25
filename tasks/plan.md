@@ -113,14 +113,25 @@ before downloading a sensitive artifact; do not assume sharing a My Drive
 folder with a service account supplies storage quota.
 Source: [Google Drive folder guide](https://developers.google.com/workspace/drive/api/guides/folder).
 
-## Backup authentication still to verify
+## Accepted backup authentication
 
-The connected Drive metadata lookup identifies the selected destination as a
-folder named `db-backup` but returns no Shared Drive ID; access is marked
-`access_not_verified`. Treat folder type and script write capability as unverified
-until a direct metadata/capability probe with the script's own identity confirms
-them. Plan for user OAuth if this is My Drive; do not assume the connected app's
-account or permission is available to the local script.
+A direct Google Drive metadata request using the existing service-account
+credentials returned HTTP 200, folder name `db-backup`, and `canAddChildren: true`,
+with no `driveId`. The destination is in My Drive. Folder write access does not
+give the service account quota or ownership for new backup files.
+
+Use **Google user OAuth for backup uploads**, as accepted by the user. Add an
+explicit first-run authorization flow: sign in once with an account allowed to
+upload into the destination, then store refresh credentials locally for
+unattended uploads every 300 seconds. Keep OAuth client secrets and refresh tokens
+out of Git and error output. Explain client registration, consent and unattended
+refresh requirements in operator documentation. Runtime must report expired or
+revoked authorization clearly rather than silently launching interactive consent.
+
+Keep existing service-account authentication for Sheets and `ADMIN_TOKEN` for v2.
+Do not reuse the connected Codex app's Google session in the script. No folder
+move or permission change is required. No backup upload was performed by the
+read-only capability check.
 
 No live database download or Drive upload has been performed during planning.
 
