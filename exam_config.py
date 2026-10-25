@@ -4,6 +4,7 @@ import math
 from pathlib import Path
 
 from utils import parse_puzzle_results
+from question_errors import error_reason
 
 
 def require(condition, message):
@@ -89,10 +90,11 @@ def normalize_rows(rows, column, config, positions):
             require(len(candidates) == 1, f'Unknown or ambiguous question {text}')
             destination = str(candidates.pop())
             require(destination not in mapped, f'Duplicate question aliases for {text}')
-            require(isinstance(value, dict) and isinstance(value.get('subtasks'), list),
-                    f'Invalid results for question {text}')
-            expected = next(q for q in ordered if positions[q['id']] == int(destination))
-            require(len(value['subtasks']) == len(expected['subtasks']), f'Subtask count mismatch for {text}')
+            if not error_reason(value):
+                require(isinstance(value, dict) and isinstance(value.get('subtasks'), list),
+                        f'Invalid results for question {text}')
+                expected = next(q for q in ordered if positions[q['id']] == int(destination))
+                require(len(value['subtasks']) == len(expected['subtasks']), f'Subtask count mismatch for {text}')
             mapped[destination] = value
         output.append({**row, column: mapped})
     return output

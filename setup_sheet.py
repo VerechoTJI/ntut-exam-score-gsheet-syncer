@@ -12,6 +12,7 @@ def build_requests(plans, metadata):
     existing = {s['properties']['title']: s for s in metadata['sheets']}
     used_ids = {s['properties']['sheetId'] for s in metadata['sheets']}
     next_id = max(used_ids, default=0) + 1
+    structure = []
     requests = []
     for title, plan in plans.items():
         rows = plan['rows']
@@ -24,20 +25,20 @@ def build_requests(plans, metadata):
             old_grid = sheet['properties']['gridProperties']
             whole = {'sheetId': sid, 'startRowIndex': 0, 'endRowIndex': old_grid['rowCount'],
                      'startColumnIndex': 0, 'endColumnIndex': old_grid['columnCount']}
-            requests.extend([
+            structure.extend([
                 {'unmergeCells': {'range': whole}},
                 {'clearBasicFilter': {'sheetId': sid}},
                 {'repeatCell': {'range': whole, 'cell': {},
                                 'fields': 'userEnteredValue,userEnteredFormat,note,dataValidation,textFormatRuns'}},
             ])
             for index in reversed(range(len(sheet.get('conditionalFormats', [])))):
-                requests.append({'deleteConditionalFormatRule': {'sheetId': sid, 'index': index}})
-            requests.append({'updateSheetProperties': {'properties': {'sheetId': sid, 'gridProperties': grid},
+                structure.append({'deleteConditionalFormatRule': {'sheetId': sid, 'index': index}})
+            structure.append({'updateSheetProperties': {'properties': {'sheetId': sid, 'gridProperties': grid},
                                                         'fields': 'gridProperties'}})
         else:
             sid = next_id
             next_id += 1
-            requests.append({'addSheet': {'properties': {'sheetId': sid, 'title': title, 'gridProperties': grid}}})
+            structure.append({'addSheet': {'properties': {'sheetId': sid, 'title': title, 'gridProperties': grid}}})
         area = {'sheetId': sid, 'startRowIndex': 0, 'endRowIndex': height,
                 'startColumnIndex': 0, 'endColumnIndex': width}
         cell_rows = [{'values': [encode(value, isinstance(value, str) and value.startswith('=')
@@ -73,7 +74,8 @@ def build_requests(plans, metadata):
                 'ranges': [{**area, 'startRowIndex': plan['frozen_rows'], 'endRowIndex': grid['rowCount'], 'startColumnIndex': 1}],
                 'booleanRule': {'condition': {'type': 'NUMBER_GREATER', 'values': [{'userEnteredValue': '1'}]},
                     'format': {'backgroundColor': {'red': 1, 'green': 0.75, 'blue': 0.75}}}}}})
-    return requests
+    # Resizing later can shift previously written cross-sheet references.
+    return structure + requests
 
 
 def setup_workbook(config, roster, url, dry_run=False, input_fn=None):

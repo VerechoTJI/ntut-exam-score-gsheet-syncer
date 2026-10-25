@@ -150,6 +150,14 @@ Commit: `feat: initialize score workbooks with explicit overwrite confirmation`.
 
 ## 9. Verify complete workflows and update operator docs
 
+Completed: 141 offline tests and exact 100% production statements/branches.
+Native Sheets with the real config's scoring structure and 3 synthetic students
+returns final/raw 110/230.02, 10/10, and 0/0, with no formula errors. Review found
+and fixed resize ordering (all tab dimensions now precede cross-sheet formulas)
+and partial system-error payload validation; regression tests cover both.
+Reviewed CLI smoke checks and operator README. Commit: `test: verify complete
+score workbook workflows and document operations` (see Git log).
+
 - [ ] Exercise setup → source sync → Combined → final calculations with a fake
   Sheets boundary and real generators, plus disposable real-engine verification.
 - [ ] Update README/env examples and link ADR; document flags, roster selection,
@@ -223,7 +231,7 @@ Commit: `feat: initialize score workbooks with explicit overwrite confirmation`.
 | 6 | 129 tests; 100% statements/branches; native Sheets sum/reorder checks | Passed | `feat: generate classroom and combined workbook plans` |
 | 7 | 131 tests; exact 100%; native Sheets weights/rules/caps/rounding | Passed | `feat: generate weighted final grades with native formula checks` |
 | 8 | 139 tests; 826/826 statements; 310/310 branches; native batch accepted | Passed | `feat: initialize score workbooks with explicit overwrite confirmation` |
-| 9 | Not started | Not started | — |
+| 9 | 141 tests; 100%; native full-config formulas and CLI smoke check | Passed | `test: verify complete score workbook workflows and document operations` |
 | 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11

@@ -1,72 +1,66 @@
-**NTUT Exam Score GSheet Syncer**
+# NTUT Exam Score GSheet Syncer
 
-Synchronizes scoreboard rows from the `ntut-exam-v2` backend API into a Google Sheet. It parses serialized puzzle results from the API and maps them to grouped puzzle/subtask columns on a sheet whose first two rows contain the puzzle header layout.
+Upload the on-machine client's scoreboard from v2 to a classroom worksheet, or initialize a five-tab workbook from an Excel roster and exam config. Judging and highest/current selection remain in the on-machine client.
 
-**Features:**
+## Install
 
-- Export per-student puzzle/subtask pass flags from backend API to Google Sheets.
-- Dry-run mode for previewing changes without writing to the sheet.
-- Flexible parsing for JSON-serialized `puzzleResults`.
-- Compare scores with current sheet values and batch-write only changed cells; skip the write request when nothing changed.
-- Clear previous pass flags when the corresponding result becomes unsuccessful, including rows with no remaining passes.
-
-**Requirements:**
-
-- Python 3.8+
-- A Google service account `credentials.json` with Drive + Sheets scopes
-- The `ntut-exam-v2` backend API accessible to the script
-
-**Python dependencies** (declared in `pyproject.toml`):
-
-- `python-dotenv`, `google-auth`, `gspread`, `requests`
-
-**Quick install (uv)**
+Python 3.13+ and uv are required. Run from this directory.
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-uv sync
+uv sync --frozen
 ```
 
-**Configuration / environment**
+Put the Google service-account key in `credentials.json`, enable Sheets/Drive APIs, and share the target Sheet with the service-account email as an editor. Never commit the key or `.env`.
 
-- Place the Google service account JSON as `credentials.json` in the project directory.
-- Set the following environment variables (for example in a `.env` file):
-  - `BACKEND_API_URL` (the base URL for the backend API, e.g., http://localhost:3000)
-  - `ADMIN_TOKEN` (the admin token string expected by the backend middleware)
-  - `SHEET_URL` (the full Google Sheets URL for the target spreadsheet)
-  - `SHEET_TITLE` (the exact name of the worksheet/tab to update, e.g., "1222")
-  - `INTERVAL` (optional sync interval in seconds, 0 or empty means one-time run)
-
-**Sheet format expectations**
-
-- The sheet must have at least two header rows.
-- The top row should contain puzzle group headers (e.g., `1`, `2`, ...), forward-filled for merged headings.
-- The second header row should contain subtask indices (e.g., `1`, `2`, ...) and a column labeled `規則` for rule results.
-- A column labeled `學號` (student id) is required for matching backend rows to sheet rows.
-
-**Usage**
-
-Preview (dry-run):
+## Set up the workbook
 
 ```powershell
-uv run python main.py --dry-run
+uv run python main.py --setup-sheet `
+  --sheet-url "https://docs.google.com/spreadsheets/d/TARGET_ID/edit" `
+  --config "..\exam-config.json" `
+  --roster "C:\path\to\roster.xlsx" `
+  --roster-sheet "工作表1" `
+  --dry-run
 ```
 
-Run (writes to online sheet):
+Remove `--dry-run` to apply. Setup requires explicit URL, config and roster arguments; there is no environment destination fallback and no new spreadsheet is created. Select `--roster-sheet` when multiple worksheets have identity headers. Columns are located by `班級`, `姓名`, `學號` regardless of position. Student IDs remain text, roster order is preserved, and coursework columns are ignored. Invalid/duplicate identities or invalid configs stop before writes.
+
+Setup initializes `1222`, `1223`, `335`, `Combined`, and `成績登記`. It identifies the destination, summarizes existing data/formulas, and warns before replacing target contents and formatting. Only `y` or `yes` continues; Enter, refusal or EOF cancels. Unrelated tabs remain unchanged. Dry-run reads but never writes. Stop classroom sync processes before replacing their tabs.
+
+Combined SUMs results by student ID across classrooms, independently of row order. Values above 1 remain visible and are highlighted for investigation. The final view uses exact subtask weights, one failed-rule multiplier per question, section caps, and rounding once at the end. No extra 100-point cap is imposed. Raw score excludes penalties and caps.
+
+## Synchronize scores
+
+Copy `.env.template` to `.env` and set backend URL/admin token, Sheet URL, classroom tab, and interval. Set `SHEET_TITLE` to one classroom source tab, not Combined or the final view. One process targets one classroom/backend.
 
 ```powershell
-uv run python main.py
+uv run python main.py --config "..\exam-config.json" --dry-run
+uv run python main.py --config "..\exam-config.json"
 ```
 
-**Notes & troubleshooting**
+`--sheet-url` overrides `SHEET_URL`. Config order flattens `sections[].puzzles[]` into numbered question groups, preserving subtask order. Actual puzzle IDs and canonical client `Q1...Qn` payloads are supported. Use the same config for setup and sync. Without `--config`, legacy numbered payloads remain supported.
 
-- If the script reports missing columns, ensure your backend is returning `testId` or a student id column (`student_id`, `student_ID`, or `學號`) and `puzzleResults` or `puzzleAmount`.
-- The script expects puzzle result entries to include `subtasks` arrays or dictionaries with test lists; it treats tests as passed when they contain accepted/true-like markers.
+Optional `--question-map mapping.json` overrides config order and requires `--config`. It maps actual IDs to one-based Sheet groups, for example:
 
-**Next steps / improvements**
+```json
+{"custom-question-b": 2, "custom-question-a": 1}
+```
 
-- Add unit tests for the parsing helpers and mapping logic.
+Unknown IDs, duplicate destinations, ambiguous aliases and layout/subtask mismatches fail before writes. Classroom tabs use two header rows with `學號`, numbered question groups/subtasks, and `規則`. Data starts at row 3. `最後成績`/`原始分數` delimit the legacy score range.
 
----
+Only changed cells upload. Ordinary failures clear previous pass flags. An existing question with no rule results writes 1 for its rule flag, matching the client's no-penalty policy. System-error markers (`SE`, `CTLE`, `ABORTED`, or explicit system attribution) skip only that student's affected question, preserve existing cells, and print its available cause. Other questions continue. Backend students absent from the roster warn and are skipped.
 
-Created from project sources in this repository.
+`INTERVAL=0`, empty or negative runs once; positive values poll. Invalid text warns and falls back to one shot. Ctrl+C stops periodic mode. An external operation has a 10-second request/retry budget; exponential delays of 1/2/4 seconds are limited by remaining time. Failures print HTTP/provider/transport causes with tokens redacted. Exhaustion stops even periodic mode with exit status 1. Keep one writer per classroom tab.
+
+## Verification
+
+```powershell
+uv run python -m coverage run --branch -m pytest tests -q
+uv run python -m coverage json -o coverage.json
+uv run python scripts/check_coverage.py coverage.json
+git diff --check
+```
+
+Offline tests isolate credentials and HTTP/Sheets boundaries. The exact gate requires 100% statements and branches across all production modules, CLI and gate included, and detects unmeasured modules. The old manual `test_db_parse.py` diagnostic is outside the offline suite. Native Google Sheets checks use a disposable workbook and synthetic identities.
+
+See [ADR-001](docs/decisions/001-sheet-setup-from-roster-and-exam-config.md), [plan](tasks/plan.md), and [task ledger](tasks/todo.md).

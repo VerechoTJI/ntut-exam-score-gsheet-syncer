@@ -46,6 +46,9 @@ def test_empty_target_setup_preserves_other_tabs(monkeypatch):
     assert any('deleteConditionalFormatRule' in r for r in requests)
     assert 'Unrelated' not in str(requests)
     assert any('addConditionalFormatRule' in r for r in requests)
+    structural = [i for i,r in enumerate(requests) if 'addSheet' in r or 'updateSheetProperties' in r]
+    writes = [i for i,r in enumerate(requests) if 'updateCells' in r]
+    assert max(structural) < min(writes)
 
 
 def test_setup_arguments_are_required(monkeypatch, tmp_path):

@@ -180,6 +180,10 @@ def sync_once(dry_run=False, sheet_url=None, config=None, question_map=None):
         key = str(r.get(db_student_key) or "").strip()
         if key:
             db_map[key] = r
+    roster_ids = {str(row[sheet_student_idx]).strip() for row in sheet_rows[2:]
+                  if len(row) > sheet_student_idx}
+    for student_id in sorted(db_map.keys() - roster_ids):
+        print(f'WARNING: Student {student_id} is absent from the target roster; skipped.')
 
     rows_updated = 0
     rows_skipped = 0
