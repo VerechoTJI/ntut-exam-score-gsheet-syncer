@@ -14,6 +14,7 @@ from mapping import (
 from utils import pick_column, col_num_to_a1, parse_puzzle_results, is_test_passed
 from retry import describe
 from exam_config import load_config, question_mapping, normalize_rows, validate_layout
+from question_errors import errored_questions
 
 
 def sync_once(dry_run=False, sheet_url=None, config=None, question_map=None):
@@ -194,12 +195,20 @@ def sync_once(dry_run=False, sheet_url=None, config=None, question_map=None):
             rows_skipped += 1
             continue
 
+        errors = errored_questions(r.get(puzzle_col_name))
+        for index, reason in errors.items():
+            label = next((qid for qid, position in (positions or {}).items()
+                          if str(position) == index), f'Q{int(index) + 1}' if index.isdigit() else index)
+            print(f'WARNING: Student {sheet_student_id}, question {label}: '
+                  f'{describe(RuntimeError(reason))}. Skipped question; existing cells preserved.')
         values = build_values_for_row(
-            r, puzzle_col_name, mapping, data_start_col, last_data_col
+            r, puzzle_col_name, mapping, data_start_col, last_data_col, errors
         )
 
         row_updates = []
         for col_idx, value in enumerate(values, start=data_start_col):
+            if value is None:
+                continue
             current = sheet_row[col_idx] if col_idx < len(sheet_row) else ""
             # Sheets returns strings, while generated pass flags are integers.
             if str(current) != str(value):

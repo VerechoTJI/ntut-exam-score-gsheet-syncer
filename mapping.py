@@ -82,13 +82,16 @@ def find_student_row(sheet_student_col_vals, db_student_id):
     return None
 
 
-def build_values_for_row(r, puzzle_col_name, mapping, data_start_col, last_data_col):
+def build_values_for_row(r, puzzle_col_name, mapping, data_start_col, last_data_col, skipped_questions=()):
     values = []
     raw = r.get(puzzle_col_name) if puzzle_col_name else None
     puzzles = parse_puzzle_results(raw)
 
     for col_idx in range(data_start_col, last_data_col + 1):
         info = mapping[col_idx]
+        if info and str(info.get('pidx')) in skipped_questions:
+            values.append(None)
+            continue
         if not info or info.get("type") in ("unknown", "final"):
             values.append("")
             continue

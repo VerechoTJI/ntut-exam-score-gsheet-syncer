@@ -59,6 +59,11 @@ exam configuration order` (see Git log).
 
 ## 4. Skip only system-errored questions on upload
 
+Completed: 114 tests; 628/628 statements and 256/256 branches. Reviewed actual
+client SE/ABORTED markers, optional system attribution, per-question preservation,
+sanitized warnings and normal WA/CE/TLE behavior. No backend changes. Commit:
+`fix: preserve only system-errored question cells` (see Git log).
+
 - [ ] Recognize client-uploaded system-error test markers and available reasons;
   distinguish normal WA/CE/TLE from infrastructure failure using source contracts.
 - [ ] For a given student skip only the affected question's subtask/rule cells;
@@ -187,7 +192,8 @@ exam configuration order` (see Git log).
 | 1 | 63 tests; 419/419 statements; 186/186 branches; JSON gate passes | Passed | `test: enforce complete offline branch coverage` |
 | 2 | 74 tests; exact 100% statements/branches | Passed | `fix: bound external retries and propagate sync failures` |
 | 3 | 109 tests; exact 100% statements/branches | Passed | `feat: map score uploads using exam configuration order` |
-| 4–9 | Not started | Not started | — |
+| 4 | 114 tests; 628/628 statements; 256/256 branches | Passed | `fix: preserve only system-errored question cells` |
+| 5–9 | Not started | Not started | — |
 | 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
