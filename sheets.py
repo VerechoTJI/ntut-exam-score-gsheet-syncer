@@ -15,9 +15,7 @@ class BoundedHTTPClient(HTTPClient):
         return run('Google Sheets request', attempt)
 
 
-def get_worksheet(
-    spreadsheet_url, sheet_title, service_account_file="credentials.json"
-):
+def get_spreadsheet(spreadsheet_url, service_account_file='credentials.json'):
     SCOPES = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
@@ -25,6 +23,8 @@ def get_worksheet(
     creds = Credentials.from_service_account_file(service_account_file, scopes=SCOPES)
     session = AuthorizedSession(creds, refresh_timeout=10, max_refresh_attempts=0)
     client = gspread.authorize(creds, http_client=BoundedHTTPClient, session=session)
-    spreadsheet = client.open_by_url(spreadsheet_url)
-    worksheet = spreadsheet.worksheet(sheet_title)
-    return worksheet
+    return client.open_by_url(spreadsheet_url)
+
+
+def get_worksheet(spreadsheet_url, sheet_title, service_account_file='credentials.json'):
+    return get_spreadsheet(spreadsheet_url, service_account_file).worksheet(sheet_title)

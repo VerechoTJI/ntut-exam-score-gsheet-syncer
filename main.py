@@ -15,6 +15,8 @@ from utils import pick_column, col_num_to_a1, parse_puzzle_results, is_test_pass
 from retry import describe
 from exam_config import load_config, question_mapping, normalize_rows, validate_layout
 from question_errors import errored_questions
+from roster import read_roster
+from setup_sheet import setup_workbook
 
 
 def sync_once(dry_run=False, sheet_url=None, config=None, question_map=None):
@@ -255,7 +257,12 @@ def cli(argv=None):
     parser.add_argument('--sheet-url', help='Override SHEET_URL')
     parser.add_argument('--config', help='Full exam configuration JSON')
     parser.add_argument('--question-map', help='JSON: question ID to one-based Sheet group')
+    parser.add_argument('--setup-sheet', action='store_true', help='Initialize five workbook tabs')
+    parser.add_argument('--roster', help='Excel roster path')
+    parser.add_argument('--roster-sheet', help='Roster worksheet name')
     args = parser.parse_args(argv)
+    if args.setup_sheet and not all((args.sheet_url, args.config, args.roster)):
+        parser.error('--setup-sheet requires explicit --sheet-url, --config and --roster')
 
     # read INTERVAL from .env in main; pass dry-run flag here
     def _entry():
@@ -265,6 +272,9 @@ def cli(argv=None):
             options['sheet_url'] = args.sheet_url
         if args.config:
             options['config'] = load_config(args.config)
+        if args.setup_sheet:
+            students = read_roster(args.roster, args.roster_sheet)
+            return setup_workbook(options['config'], students, args.sheet_url, dry_run=args.dry_run)
         if args.question_map:
             if not args.config:
                 raise ValueError('--question-map requires --config')

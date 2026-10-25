@@ -131,6 +131,12 @@ Commit: `feat: generate weighted final grades with native formula checks`.
 
 ## 8. Wire safe setup CLI and destination confirmation
 
+Completed: 139 tests; 826/826 statements and 310/310 branches. Native Sheets
+accepted all 76 generated replacement/formatting requests in the synthetic
+workbook. Review passed: missing args, dry-run, cancellation, EOF, formulas
+displaying blank, unrelated-tab preservation and API failure exits covered.
+Commit: `feat: initialize score workbooks with explicit overwrite confirmation`.
+
 - [ ] Require explicit setup `--sheet-url`, `--roster`, `--config`; do not use an
   env destination fallback. Default source tab names stay 1222/1223/335.
 - [ ] Inspect target tabs including formulas displaying blank; show title/URL,
@@ -216,7 +222,8 @@ Commit: `feat: generate weighted final grades with native formula checks`.
 | 5 | 126 tests; exact 100% statements/branches; actual roster read-only smoke check | Passed | `feat: import validated student identities from Excel rosters` |
 | 6 | 129 tests; 100% statements/branches; native Sheets sum/reorder checks | Passed | `feat: generate classroom and combined workbook plans` |
 | 7 | 131 tests; exact 100%; native Sheets weights/rules/caps/rounding | Passed | `feat: generate weighted final grades with native formula checks` |
-| 8–9 | Not started | Not started | — |
+| 8 | 139 tests; 826/826 statements; 310/310 branches; native batch accepted | Passed | `feat: initialize score workbooks with explicit overwrite confirmation` |
+| 9 | Not started | Not started | — |
 | 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
