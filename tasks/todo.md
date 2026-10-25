@@ -76,6 +76,12 @@ sanitized warnings and normal WA/CE/TLE behavior. No backend changes. Commit:
 
 ## 5. Import Excel roster identities
 
+Completed: 126 tests; exact 100% production statements/branches. Actual provided
+`工作表1` reads as 93 students/93 unique IDs, without persisting private records.
+Review passed: short rows padded, numeric/text IDs preserved, workbook closed,
+ambiguous worksheets and duplicate/missing identities rejected. Commit:
+`feat: import validated student identities from Excel rosters` (see Git log).
+
 - [ ] Read `.xlsx` identity columns by `班級`, `姓名`, `學號` headers, preserve row
   order and text IDs, ignore unrelated coursework. Add/lock a reader if needed.
 - [ ] Support `--roster-sheet`; reject ambiguous tabs and missing/duplicate IDs or
@@ -193,7 +199,8 @@ sanitized warnings and normal WA/CE/TLE behavior. No backend changes. Commit:
 | 2 | 74 tests; exact 100% statements/branches | Passed | `fix: bound external retries and propagate sync failures` |
 | 3 | 109 tests; exact 100% statements/branches | Passed | `feat: map score uploads using exam configuration order` |
 | 4 | 114 tests; 628/628 statements; 256/256 branches | Passed | `fix: preserve only system-errored question cells` |
-| 5–9 | Not started | Not started | — |
+| 5 | 126 tests; exact 100% statements/branches; actual roster read-only smoke check | Passed | `feat: import validated student identities from Excel rosters` |
+| 6–9 | Not started | Not started | — |
 | 10–12 (backup extension) | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
