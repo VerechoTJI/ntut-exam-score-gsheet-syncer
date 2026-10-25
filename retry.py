@@ -27,7 +27,9 @@ def describe(error):
     token = os.getenv('ADMIN_TOKEN')
     if token:
         message = message.replace(token, '[REDACTED]')
-    return re.sub(r'(?i)Bearer\s+[^\s,\"\']+', 'Bearer [REDACTED]', message)
+    message = re.sub(r'(?i)Bearer\s+[^\s,\"\']+', 'Bearer [REDACTED]', message)
+    return re.sub(r'''(?i)((?:access_token|refresh_token|client_secret)["']?\s*[:=]\s*["']?)[^"',\s}&]+''',
+                  r'\1[REDACTED]', message)
 
 
 def run(label, operation):

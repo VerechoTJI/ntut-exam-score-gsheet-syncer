@@ -190,6 +190,14 @@ validate v2 SQLite backup snapshots` (see Git log).
 
 ## 11. Upload validated snapshots to the explicit Drive folder
 
+Completed offline: 163 tests; exact 100% production statements/branches. Review
+passed for explicit consent, token refresh/revocation, secret redaction, folder
+permissions, original-byte multipart uploads, stable IDs on lost responses, and
+size/checksum/destination verification. Pre-generated-ID retry behavior checked
+against Google's upload documentation. User needs the one-time authorization
+command; no Desktop OAuth client JSON is available for live upload verification.
+Commit: `feat: authorize user Drive uploads with verified idempotent backups`.
+
 - [ ] Add Google user OAuth for the selected My Drive folder, including explicit
   first-run consent, local refresh-token storage, unattended refresh, and clear
   revoked/expired authorization errors. Ignore secrets/token files in Git; retain
@@ -239,7 +247,8 @@ validate v2 SQLite backup snapshots` (see Git log).
 | 8 | 139 tests; 826/826 statements; 310/310 branches; native batch accepted | Passed | `feat: initialize score workbooks with explicit overwrite confirmation` |
 | 9 | 141 tests; 100%; native full-config formulas and CLI smoke check | Passed | `test: verify complete score workbook workflows and document operations` |
 | 10 | 150 tests; 100%; synthetic SQLite validation/cleanup | Passed | `feat: download and validate v2 SQLite backup snapshots` |
-| 11–12 | Not started; 300-second interval, destination, and user OAuth agreed | Not started | — |
+| 11 | 163 tests; 100%; live OAuth upload awaits client JSON/sign-in | Passed offline/code review | `feat: authorize user Drive uploads with verified idempotent backups` |
+| 12 | Not started | Not started | — |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of

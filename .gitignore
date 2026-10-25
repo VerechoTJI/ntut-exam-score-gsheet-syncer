@@ -9,3 +9,8 @@ __pycache__/
 .coverage
 coverage.json
 htmlcov/
+drive_token.json
+drive_oauth_client.json
+drive_token.tmp
+client_secret*.json
+.secrets/

@@ -107,3 +107,8 @@ def test_recoverable_failure_classes(failure):
     operation = Mock(side_effect=[errors[failure], 'ok'])
     assert retry.run('External request', operation) == 'ok'
     assert operation.call_count == 2
+
+
+def test_oauth_secrets_are_redacted():
+    message=retry.describe(RuntimeError('access_token=access123 refresh_token="refresh123" client_secret: secret123'))
+    assert 'access123' not in message and 'refresh123' not in message and 'secret123' not in message
