@@ -36,13 +36,24 @@ Google spreadsheet and requires `--sheet-url`, `--roster`, and `--config`
 arguments. `--config` supplies the local v2 exam configuration JSON file.
 Setup must not fall back to `SHEET_URL` from `.env` or create a new spreadsheet.
 
-Proposed invocation (these flags are not yet implemented):
+Invocation from the syncer directory:
+
+PowerShell:
 
 ```powershell
 uv run python main.py --setup-sheet `
   --sheet-url "https://docs.google.com/spreadsheets/d/TARGET_ID/edit" `
-  --roster "C:\path\to\roster.xlsx" `
-  --config "C:\path\to\config.json"
+  --roster "..\roster.xlsx" `
+  --config "..\exam-config.json"
+```
+
+Bash:
+
+```bash
+uv run python main.py --setup-sheet \
+  --sheet-url "https://docs.google.com/spreadsheets/d/TARGET_ID/edit" \
+  --roster "../roster.xlsx" \
+  --config "../exam-config.json"
 ```
 
 For ordinary syncing, `--sheet-url` may override the existing `SHEET_URL`

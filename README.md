@@ -5,8 +5,18 @@ Upload the on-machine client's scoreboard from v2 to a classroom worksheet, or i
 ## Install
 
 Python 3.13+ and uv are required. Run from this directory.
+All file arguments below are relative to this directory. Replace `../roster.xlsx`
+(PowerShell: `..\roster.xlsx`) with the relative path to your own Excel roster.
+
+PowerShell:
 
 ```powershell
+uv sync --frozen
+```
+
+Bash:
+
+```bash
 uv sync --frozen
 ```
 
@@ -14,12 +24,25 @@ Put the Google service-account key in `credentials.json`, enable Sheets/Drive AP
 
 ## Set up the workbook
 
+PowerShell:
+
 ```powershell
 uv run python main.py --setup-sheet `
   --sheet-url "https://docs.google.com/spreadsheets/d/TARGET_ID/edit" `
   --config "..\exam-config.json" `
-  --roster "C:\path\to\roster.xlsx" `
+  --roster "..\roster.xlsx" `
   --roster-sheet "工作表1" `
+  --dry-run
+```
+
+Bash:
+
+```bash
+uv run python main.py --setup-sheet \
+  --sheet-url "https://docs.google.com/spreadsheets/d/TARGET_ID/edit" \
+  --config "../exam-config.json" \
+  --roster "../roster.xlsx" \
+  --roster-sheet "工作表1" \
   --dry-run
 ```
 
@@ -33,9 +56,18 @@ Combined SUMs results by student ID across classrooms, independently of row orde
 
 Copy `.env.template` to `.env` and set backend URL/admin token, Sheet URL, classroom tab, and interval. Set `SHEET_TITLE` to one classroom source tab, not Combined or the final view. One process targets one classroom/backend.
 
+PowerShell:
+
 ```powershell
 uv run python main.py --config "..\exam-config.json" --dry-run
 uv run python main.py --config "..\exam-config.json"
+```
+
+Bash:
+
+```bash
+uv run python main.py --config "../exam-config.json" --dry-run
+uv run python main.py --config "../exam-config.json"
 ```
 
 `--sheet-url` overrides `SHEET_URL`. Config order flattens `sections[].puzzles[]` into numbered question groups, preserving subtask order. Actual puzzle IDs and canonical client `Q1...Qn` payloads are supported. Use the same config for setup and sync. Without `--config`, legacy numbered payloads remain supported.
@@ -68,7 +100,15 @@ One-time setup:
    the service-account `credentials.json`.
 3. Run the following and sign in with an account able to upload to the folder:
 
+PowerShell:
+
 ```powershell
+uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
+```
+
+Bash:
+
+```bash
 uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
 ```
 
@@ -83,9 +123,19 @@ check consent/publishing settings or reauthorize before the exam.
 
 For your selected folder and 300-second interval:
 
+PowerShell:
+
 ```powershell
 uv run python main.py --backup-only `
   --backup-folder "https://drive.google.com/drive/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq" `
+  --backup-interval 300 --classroom 1222
+```
+
+Bash:
+
+```bash
+uv run python main.py --backup-only \
+  --backup-folder "https://drive.google.com/drive/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq" \
   --backup-interval 300 --classroom 1222
 ```
 
@@ -114,7 +164,18 @@ an exhausted operation stops the process. Existing Drive backups are retained.
 
 ## Verification
 
+PowerShell:
+
 ```powershell
+uv run python -m coverage run --branch -m pytest tests -q
+uv run python -m coverage json -o coverage.json
+uv run python scripts/check_coverage.py coverage.json
+git diff --check
+```
+
+Bash:
+
+```bash
 uv run python -m coverage run --branch -m pytest tests -q
 uv run python -m coverage json -o coverage.json
 uv run python scripts/check_coverage.py coverage.json

@@ -61,9 +61,20 @@ credentials, or full operational configs. Use synthetic, representative fixtures
    review findings, and commit ID in the task ledger. Do not bundle the next task.
    If a gate fails, fix it before committing or marking the task complete.
 
-Planned gate commands after Task 1 adds coverage tooling/configuration:
+Coverage gate commands:
+
+PowerShell:
 
 ```powershell
+uv run python -m coverage run --branch -m pytest tests -q
+uv run python -m coverage json -o coverage.json
+uv run python scripts/check_coverage.py coverage.json
+git diff --check
+```
+
+Bash:
+
+```bash
 uv run python -m coverage run --branch -m pytest tests -q
 uv run python -m coverage json -o coverage.json
 uv run python scripts/check_coverage.py coverage.json
