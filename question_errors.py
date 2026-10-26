@@ -4,6 +4,8 @@ from utils import parse_puzzle_results
 
 def error_reason(value):
     if isinstance(value, dict):
+        if value.get('ruleId') == '__engine_error__':
+            return str(value.get('reason') or value.get('message') or 'Special rule evaluation failed')
         status = str(value.get('status', value.get('statusCode', ''))).upper()
         if status in ('SE', 'SYSTEMERROR', 'CTLE', 'ABORTED') or str(value.get('attribution', '')).lower() == 'system':
             return str(value.get('message') or value.get('reason') or status or 'system-attributed failure')

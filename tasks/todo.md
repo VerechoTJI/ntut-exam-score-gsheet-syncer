@@ -301,6 +301,17 @@ wait, not the accumulated request/retry duration. Google authentication is SDK-m
 - [x] Independent review passed; truncated-response reproduction verified.
   Commit: `feat: configure backend backoff caps and Google timeouts`.
 
+## 16. Preserve questions with client rule-engine failures
+
+- [x] Recognize the client's reserved `ruleId: "__engine_error__"` recursively.
+  Report its concrete `reason`, falling back to message/default text.
+- [x] Regression tests reproduce the former wrong score-cell writes; verify
+  legacy/config mappings, missing error metadata, and two students/two questions.
+  Preserve every affected question cell while other questions/students and
+  ordinary rule failures continue syncing.
+- [x] Full suite: 215 tests, exact 100% statement/branch gate. Independent review
+  passed. Commit: `fix: preserve questions with client rule-engine failures`.
+
 ## Execution ledger
 
 | Task | Test/coverage evidence | Review | Commit |
@@ -321,6 +332,7 @@ wait, not the accumulated request/retry duration. Google authentication is SDK-m
 | 13 | 177 tests; 1142/1142 statements; 390/390 branches; native band/empty-roster checks; five-tab visual checks | Independent five-axis review passed; 108 synthetic geometries checked | `fix: recreate reference workbook styling and distribution plot` |
 | 14 | 190 tests; 1143/1143 statements; 390/390 branches; 13 URL regression/rejection cases | Independent review passed | `fix: accept account-specific Google Drive folder URLs` |
 | 15 | 210 tests; 1146/1146 statements; 386/386 branches; native SDK refresh replay and uncertain-upload checks | Independent review passed; truncated-response blocker resolved | `feat: configure backend backoff caps and Google timeouts` |
+| 16 | 215 tests; exact 100% statement/branch gate; client engine-marker integration regressions | Independent review passed | `fix: preserve questions with client rule-engine failures` |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of
