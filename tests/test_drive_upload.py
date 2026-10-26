@@ -42,7 +42,7 @@ def response(data,status=200):
     return r
 
 
-def session_for(artifact,name,post_fail=False,metadata_change=None):
+def session_for(artifact,name,post_fail=False,metadata_change=None,conflict=False):
     session=Mock()
     posted=[]
     metadata={'id':'file123','name':name,'parents':['folder123'],
@@ -52,8 +52,10 @@ def session_for(artifact,name,post_fail=False,metadata_change=None):
         if 'generateIds' in url:return response({'ids':['file123']})
         if method=='POST':
             posted.append(kwargs['data'].read())
-            if post_fail and len(posted)==1:raise requests.ConnectionError('response lost')
-            return response({},409 if post_fail else 200)
+            if post_fail and len(posted)==1:
+                if isinstance(post_fail,Exception):raise post_fail
+                raise requests.ConnectionError('response lost')
+            return response({},409 if conflict else 200)
         if url.endswith('/folder123'):
             return response({'mimeType':'application/vnd.google-apps.folder','capabilities':{'canAddChildren':True}})
         return response(metadata)
@@ -61,16 +63,19 @@ def session_for(artifact,name,post_fail=False,metadata_change=None):
     return session,posted
 
 
-@pytest.mark.parametrize('lost',[False,True])
-def test_upload_is_byte_exact_and_reuses_file_id(tmp_path,lost):
+@pytest.mark.parametrize('mode',['normal','lost','conflict'])
+def test_upload_is_byte_exact_and_reuses_file_id(monkeypatch,tmp_path,mode):
+    monkeypatch.setenv('GOOGLE_TIMEOUT_SECONDS', '41')
     path=tmp_path/'snapshot.sqlite';path.write_bytes(b'synthetic SQLite bytes')
     artifact={'path':path,'size':path.stat().st_size,'md5':hashlib.md5(path.read_bytes()).hexdigest()}
     name='1222_timestamp.sqlite'
-    session,posted=session_for(artifact,name,lost)
+    session,posted=session_for(artifact,name,post_fail=mode=='lost',conflict=mode=='conflict')
     result=drive_upload.upload_backup(session,artifact,'https://drive.google.com/drive/folders/folder123?usp=sharing',name)
     assert result=='https://drive.google.com/file/d/file123/view'
     assert all(path.read_bytes() in body and b'"id": "file123"' in body for body in posted)
     assert len(set(posted))==1
+    assert len(posted)==1
+    assert all(call.kwargs['timeout']==41 for call in session.request.call_args_list)
 
 
 @pytest.mark.parametrize('change',[{'size':'0'},{'md5Checksum':'wrong'},{'parents':['other']},{'name':'other'},{'id':'other'}])
@@ -80,6 +85,30 @@ def test_metadata_mismatch_is_not_success(tmp_path,change):
     session,_=session_for(artifact,'name.sqlite',metadata_change=change)
     with pytest.raises(ValueError,match='verification'):
         drive_upload.upload_backup(session,artifact,'folder123','name.sqlite')
+
+
+@pytest.mark.parametrize('failure', [requests.Timeout('response timeout'),
+    requests.exceptions.ChunkedEncodingError('truncated response'),
+    requests.exceptions.ContentDecodingError('unreadable response'),
+    requests.HTTPError('500 after commit')])
+def test_uncertain_upload_is_verified_without_resending(tmp_path,failure):
+    path=tmp_path/'backup';path.write_bytes(b'data')
+    artifact={'path':path,'size':4,'md5':hashlib.md5(b'data').hexdigest()}
+    session,posted=session_for(artifact,'name.sqlite',post_fail=failure)
+    assert drive_upload.upload_backup(session,artifact,'folder123','name.sqlite').endswith('/file123/view')
+    assert len(posted)==1
+    assert session.request.call_args.args[:2]==('GET',drive_upload.API+'/file123')
+
+
+def test_truncated_upload_response_still_requires_matching_checksum(tmp_path):
+    path=tmp_path/'backup';path.write_bytes(b'data')
+    artifact={'path':path,'size':4,'md5':hashlib.md5(b'data').hexdigest()}
+    session,posted=session_for(artifact,'name.sqlite',
+        post_fail=requests.exceptions.ChunkedEncodingError('truncated response'),
+        metadata_change={'md5Checksum':'wrong'})
+    with pytest.raises(ValueError,match='verification failed'):
+        drive_upload.upload_backup(session,artifact,'folder123','name.sqlite')
+    assert len(posted)==1
 
 
 def test_folder_access_names_and_invalid_ids(tmp_path):
@@ -96,8 +125,25 @@ def test_folder_access_names_and_invalid_ids(tmp_path):
 def test_http_failure_and_invalid_generated_ids(tmp_path):
     session=Mock()
     session.request.return_value=response({'error':{'message':'permission denied'}},403)
-    with pytest.raises(drive_upload.retry.OperationFailed,match='permission denied'):
+    with pytest.raises(requests.HTTPError,match='403'):
         drive_upload.upload_backup(session,{},'folder123','name.sqlite')
     session.request.side_effect=[response({'mimeType':'application/vnd.google-apps.folder','capabilities':{'canAddChildren':True}}),response({'ids':[]})]
     with pytest.raises(ValueError,match='file ID'):
         drive_upload.upload_backup(session,{},'folder123','name.sqlite')
+
+
+def test_failed_upload_reconciliation_reports_failure(tmp_path,capsys):
+    path=tmp_path/'backup';path.write_bytes(b'data')
+    artifact={'path':path,'size':4,'md5':hashlib.md5(b'data').hexdigest()}
+    session,posted=session_for(artifact,'name.sqlite',post_fail=True)
+    original=session.request.side_effect
+    def missing(method,url,**kwargs):
+        if url.endswith('/file123'):
+            return response({'error':{'message':'File not found'}},404)
+        return original(method,url,**kwargs)
+    session.request.side_effect=missing
+    with pytest.raises(requests.HTTPError,match='404'):
+        drive_upload.upload_backup(session,artifact,'folder123','name.sqlite')
+    assert len(posted)==1
+    output=capsys.readouterr().out
+    assert 'response lost' in output and 'File not found' in output and 'file123' in output

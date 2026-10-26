@@ -14,12 +14,11 @@ import retry
 def download_backup(directory, api_url, token):
     require(api_url and token, 'BACKEND_API_URL and ADMIN_TOKEN are required for database backup')
     destination = Path(directory)/'snapshot.sqlite'
-    def attempt(remaining):
-        deadline = retry.monotonic()+remaining
+    def attempt(timeout):
         try:
             with requests.get(api_url.rstrip('/')+'/admin/backup',
                               headers={'Authorization':f'Bearer {token}'},
-                              stream=True, timeout=Timeout(total=remaining)) as response:
+                              stream=True, timeout=Timeout(total=timeout)) as response:
                 if not response.ok:
                     # Buffer the error before closing the streamed response.
                     response.content
@@ -31,8 +30,6 @@ def download_backup(directory, api_url, token):
                 size = 0
                 with destination.open('wb') as output:
                     for chunk in response.iter_content(65536):
-                        if retry.monotonic() >= deadline:
-                            raise requests.Timeout('Database download deadline exceeded')
                         if chunk:
                             output.write(chunk)
                             digest.update(chunk)

@@ -1,15 +1,22 @@
 """Explicit desktop consent, then unattended Drive token refresh."""
 from pathlib import Path
+from functools import partial
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from urllib3.util import Timeout
 
 from exam_config import require
-import retry
+from timeout_settings import seconds
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
+
+
+class TimedInstalledAppFlow(InstalledAppFlow):
+    def fetch_token(self, **kwargs):
+        # Limit token HTTP requests, not the user's browser consent time.
+        kwargs['timeout'] = seconds('GOOGLE_TIMEOUT_SECONDS', 30)
+        return super().fetch_token(**kwargs)
 
 
 def save_token(credentials, path):
@@ -20,10 +27,11 @@ def save_token(credentials, path):
 
 
 def user_credentials(token_path='drive_token.json', client_path='drive_oauth_client.json', interactive=False):
+    timeout = seconds('GOOGLE_TIMEOUT_SECONDS', 30)
     token = Path(token_path)
     if interactive:
         require(Path(client_path).is_file(), 'Google Desktop OAuth client JSON required; provide --oauth-client')
-        flow = InstalledAppFlow.from_client_secrets_file(str(client_path), SCOPES)
+        flow = TimedInstalledAppFlow.from_client_secrets_file(str(client_path), SCOPES)
         credentials = flow.run_local_server(port=0, access_type='offline', prompt='consent')
         require(credentials.refresh_token, 'OAuth consent did not provide a refresh token')
         save_token(credentials, token)
@@ -33,12 +41,6 @@ def user_credentials(token_path='drive_token.json', client_path='drive_oauth_cli
         require(credentials.refresh_token, 'OAuth credentials lack a refresh token; run --authorize-drive')
         require(credentials.has_scopes(SCOPES), 'OAuth credentials lack Drive permission; run --authorize-drive')
         if not credentials.valid:
-            transport = Request()
-            def refresh(remaining):
-                def bounded(*args, **kwargs):
-                    kwargs['timeout'] = Timeout(total=remaining)
-                    return transport(*args, **kwargs)
-                credentials.refresh(bounded)
-            retry.run('Refresh Google Drive OAuth credentials', refresh)
+            credentials.refresh(partial(Request(), timeout=timeout))
             save_token(credentials, token)
     return credentials

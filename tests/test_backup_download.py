@@ -34,6 +34,7 @@ def test_download_preserves_original_bytes_and_checksum(monkeypatch,tmp_path):
     assert artifact['size']==len(data) and len(artifact['md5'])==32
     assert get.call_args.args[0]=='http://backend/admin/backup'
     assert get.call_args.kwargs['headers']['Authorization']=='Bearer secret-test'
+    assert get.call_args.kwargs['timeout'].total==10
 
 
 @pytest.mark.parametrize('kind',['empty','html','truncated','corrupt','length','type'])
@@ -52,19 +53,17 @@ def test_invalid_downloads_are_not_retained(monkeypatch,tmp_path,kind):
     assert not (tmp_path/'snapshot.sqlite').exists()
 
 
-def test_stream_deadline_and_http_causes(monkeypatch,tmp_path,capsys):
+def test_interrupted_stream_and_http_causes(monkeypatch,tmp_path,capsys):
     data=database_bytes(tmp_path)
     response=response_for(data)
-    now=[0.0]
-    monkeypatch.setattr(backup_download.retry,'monotonic',lambda:now[0])
-    monkeypatch.setattr(backup_download.retry,'sleep',lambda delay:now.__setitem__(0,now[0]+delay))
     def chunks(size):
-        now[0]+=11
         yield data
+        raise requests.Timeout('Stream read timed out')
     response.iter_content.side_effect=chunks
     monkeypatch.setattr(backup_download.requests,'get',lambda *a,**k:response)
-    with pytest.raises(backup_download.retry.OperationFailed,match='deadline'):
+    with pytest.raises(backup_download.retry.OperationFailed,match='Stream read timed out'):
         backup_download.download_backup(tmp_path,'http://backend','token')
+    assert not (tmp_path/'snapshot.sqlite').exists()
     response=response_for(data)
     response.ok=False
     response.status_code=503
@@ -84,16 +83,10 @@ def test_missing_settings_and_optional_content_length(monkeypatch,tmp_path):
     assert backup_download.download_backup(tmp_path,'http://backend','token')['size']==len(data)
 
 
-def test_late_integrity_check_cleans_rejected_artifact(monkeypatch,tmp_path):
+def test_integrity_exception_cleans_rejected_artifact(monkeypatch,tmp_path):
     data=database_bytes(tmp_path)
-    now=[0.0]
-    monkeypatch.setattr(backup_download.retry,'monotonic',lambda:now[0])
-    connect=backup_download.sqlite3.connect
-    def slow_connect(*args,**kwargs):
-        now[0]+=11
-        return connect(*args,**kwargs)
-    monkeypatch.setattr(backup_download.sqlite3,'connect',slow_connect)
+    monkeypatch.setattr(backup_download.sqlite3,'connect',Mock(side_effect=sqlite3.OperationalError('database locked')))
     monkeypatch.setattr(backup_download.requests,'get',lambda *a,**k:response_for(data))
-    with pytest.raises(backup_download.retry.OperationFailed):
+    with pytest.raises(sqlite3.OperationalError,match='database locked'):
         backup_download.download_backup(tmp_path,'http://backend','token')
     assert not (tmp_path/'snapshot.sqlite').exists()

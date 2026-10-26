@@ -115,12 +115,15 @@ def test_get_worksheet(monkeypatch):
     credentials = Mock()
     client = Mock()
     monkeypatch.setattr(sheets.Credentials, 'from_service_account_file', credentials)
-    monkeypatch.setattr(sheets, 'AuthorizedSession', Mock())
+    session = Mock()
+    monkeypatch.setattr(sheets, 'GoogleSession', session)
     monkeypatch.setattr(sheets.gspread, 'authorize', Mock(return_value=client))
     assert sheets.get_worksheet('url', 'tab') is client.open_by_url.return_value.worksheet.return_value
     client.open_by_url.assert_called_once_with('url')
     client.open_by_url.return_value.worksheet.assert_called_once_with('tab')
     assert credentials.call_args.args == ('credentials.json',)
+    session.assert_called_once_with(credentials.return_value)
+    assert sheets.gspread.authorize.call_args.kwargs['session'] is session.return_value
 
 
 def configure_sync(monkeypatch, rows, sheet_rows=None, columns=None):

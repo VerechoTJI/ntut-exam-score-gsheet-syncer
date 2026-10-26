@@ -20,8 +20,8 @@ def fetch_scoreboard_rows(limit=None):
     
     try:
         # Fetch data from the API
-        def fetch(remaining):
-            response = requests.get(f"{api_url.rstrip('/')}/admin/scores", headers=headers, timeout=Timeout(total=remaining))
+        def fetch(timeout):
+            response = requests.get(f"{api_url.rstrip('/')}/admin/scores", headers=headers, timeout=Timeout(total=timeout))
             response.raise_for_status()
             return response.json()
         data = run('Fetch backend scores', fetch)

@@ -31,7 +31,7 @@ def test_single_shot_and_failure_stop():
 
 def test_backup_lifecycle_and_cleanup(monkeypatch,tmp_path):
     session=MagicMock()
-    monkeypatch.setattr(backup_service,'AuthorizedSession',Mock(return_value=session))
+    monkeypatch.setattr(backup_service,'GoogleSession',Mock(return_value=session))
     credentials=Mock()
     monkeypatch.setattr(backup_service,'user_credentials',credentials)
     monkeypatch.setattr(backup_service,'writable_folder',Mock(return_value='folder123'))
@@ -91,14 +91,14 @@ def test_complete_backup_pipeline_with_real_binary_validation(monkeypatch,tmp_pa
     artifact={'size':len(data),'md5':hashlib.md5(data).hexdigest()}
     session,posted=session_for(artifact,name,post_fail=True)
     context=MagicMock();context.__enter__.return_value=session
-    monkeypatch.setattr(backup_service,'AuthorizedSession',Mock(return_value=context))
+    monkeypatch.setattr(backup_service,'GoogleSession',Mock(return_value=context))
     monkeypatch.setattr(backup_service,'user_credentials',Mock())
     monkeypatch.setattr(backup_service,'backup_name',lambda classroom:name)
     monkeypatch.setenv('BACKEND_API_URL','http://backend')
     monkeypatch.setenv('ADMIN_TOKEN','test-secret')
     monkeypatch.setattr(backup_download.requests,'get',lambda *a,**kw:response_for(data))
     assert backup_service.backup_once('folder123','1222','token.json','client.json')==0
-    assert len(posted)==2 and posted[0]==posted[1] and data in posted[0]
+    assert len(posted)==1 and data in posted[0]
 
 
 def test_cli_uses_300_second_backup_default_independently(monkeypatch):

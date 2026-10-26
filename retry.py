@@ -1,11 +1,11 @@
-"""One bounded retry policy for external operations; no nested retry loops."""
+"""Backend retries stop when the next exponential delay exceeds its cap."""
 import os
 import re
-from time import monotonic, sleep
+from time import sleep
 
-from google.auth.exceptions import GoogleAuthError
-from gspread.exceptions import APIError
 import requests
+
+from timeout_settings import seconds
 
 
 class OperationFailed(RuntimeError):
@@ -33,24 +33,19 @@ def describe(error):
 
 
 def run(label, operation):
-    deadline = monotonic() + 10
+    maximum = seconds('BACKOFF_MAX_SECONDS', 10)
     delay = 1
     attempt = 0
-    cause = 'deadline exhausted'
-    while monotonic() < deadline:
-        remaining = deadline - monotonic()
+    while True:
         attempt += 1
         try:
-            result = operation(remaining)
-            if monotonic() >= deadline:
-                raise requests.Timeout('10-second operation deadline exceeded')
-            return result
-        except (requests.RequestException, APIError, GoogleAuthError) as error:
+            # Backend connect/read timeout per attempt, not a total wall clock.
+            return operation(10)
+        except requests.RequestException as error:
             cause = describe(error)
             print(f'WARNING: {label}, attempt {attempt}: {cause}')
-            remaining = deadline - monotonic()
-            if remaining <= 0:
-                break
-            sleep(min(delay, remaining))
+            if delay > maximum:
+                raise OperationFailed(f'{label} stopped: next backoff {delay}s exceeds '
+                                      f'BACKOFF_MAX_SECONDS={maximum:g}; {cause}') from error
+            sleep(delay)
             delay *= 2
-    raise OperationFailed(f'{label} stopped after 10 seconds: {cause}')

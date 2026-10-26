@@ -275,6 +275,32 @@ Commit: `feat: schedule independent database backups and document OAuth setup`.
   review passed. Preserve unrelated existing formatting and `.gitignore` edits.
 - Commit: `fix: accept account-specific Google Drive folder URLs`.
 
+## 15. Separate configurable backend backoff and Google timeouts
+
+This requirement supersedes the historical total-deadline policy in Tasks
+2/10/11/12. The user clarified that the maximum applies to the next exponential
+wait, not the accumulated request/retry duration. Google authentication is SDK-managed.
+
+- [x] `BACKOFF_MAX_SECONDS` defaults to 10: wait 1/2/4/8 seconds, then stop if
+  another failure would require 16 seconds. Do not truncate the wait and retry
+  forever. Apply this application retry loop only to the backend APIs.
+- [x] Retain the backend's per-attempt 10-second connect/read timeout, removing
+  the obsolete total-download/validation deadline. Report the exact final cause.
+- [x] `GOOGLE_TIMEOUT_SECONDS` defaults to 30 for Sheets, Drive and OAuth token
+  HTTP requests. Use SDK-managed refresh/401 retries without custom backoff or
+  a total login deadline; browser consent time remains unrestricted.
+- [x] Rewind streamed multipart bodies on SDK authentication replay. Reconcile
+  uncertain POST responses (including truncated/undecodable responses) against
+  the assigned file ID, name, parent, size and checksum without blindly resending.
+- [x] Document both variable names, short descriptions, units, defaults and
+  scope in `.env.template` and the local ignored `.env`; preserve existing values.
+- [x] Tests cover caps/defaults/fractional and invalid values, native SDK 401
+  replay, actual OAuth flow timeout forwarding, refresh failure propagation,
+  interrupted downloads, uncertain upload reconciliation and checksum failures.
+  Full suite: 210 tests; exact coverage gate 1,146 statements/386 branches, 100%.
+- [x] Independent review passed; truncated-response reproduction verified.
+  Commit: `feat: configure backend backoff caps and Google timeouts`.
+
 ## Execution ledger
 
 | Task | Test/coverage evidence | Review | Commit |
@@ -294,6 +320,7 @@ Commit: `feat: schedule independent database backups and document OAuth setup`.
 | 12 | 173 tests; 1048/1048 statements; 364/364 branches; CLI preview passes | Passed code/offline review; live consent/upload pending | `feat: schedule independent database backups and document OAuth setup` |
 | 13 | 177 tests; 1142/1142 statements; 390/390 branches; native band/empty-roster checks; five-tab visual checks | Independent five-axis review passed; 108 synthetic geometries checked | `fix: recreate reference workbook styling and distribution plot` |
 | 14 | 190 tests; 1143/1143 statements; 390/390 branches; 13 URL regression/rejection cases | Independent review passed | `fix: accept account-specific Google Drive folder URLs` |
+| 15 | 210 tests; 1146/1146 statements; 386/386 branches; native SDK refresh replay and uncertain-upload checks | Independent review passed; truncated-response blocker resolved | `feat: configure backend backoff caps and Google timeouts` |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of

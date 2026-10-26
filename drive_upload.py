@@ -8,10 +8,11 @@ from tempfile import SpooledTemporaryFile
 from urllib.parse import urlparse
 import uuid
 
-from urllib3.util import Timeout
+import requests
 
 from exam_config import require
-import retry
+from timeout_settings import seconds
+from retry import describe
 
 API = "https://www.googleapis.com/drive/v3/files"
 
@@ -44,18 +45,14 @@ def folder_id(value):
 
 
 def request(session, label, method, url, allow_conflict=False, **kwargs):
-    def attempt(remaining):
-        body = kwargs.get("data")
-        if body is not None:
-            body.seek(0)
-        response = session.request(
-            method, url, timeout=Timeout(total=remaining), **kwargs
-        )
+    try:
+        response = session.request(method, url, timeout=seconds('GOOGLE_TIMEOUT_SECONDS', 30), **kwargs)
         if not (allow_conflict and response.status_code == 409):
             response.raise_for_status()
         return response
-
-    return retry.run(label, attempt)
+    except requests.RequestException as error:
+        print(f'ERROR: {label}: {describe(error)}')
+        raise
 
 
 def writable_folder(session, destination):
@@ -116,19 +113,25 @@ def upload_backup(session, artifact, destination, name):
             shutil.copyfileobj(source, body)
         body.write(f"\r\n--{boundary}--\r\n".encode("ascii"))
         length = body.tell()
-        request(
-            session,
-            "Upload database backup",
-            "POST",
-            "https://www.googleapis.com/upload/drive/v3/files",
-            allow_conflict=True,
-            params={"uploadType": "multipart", "supportsAllDrives": "true"},
-            data=body,
-            headers={
-                "Content-Type": f"multipart/related; boundary={boundary}",
-                "Content-Length": str(length),
-            },
-        )
+        body.seek(0)
+        try:
+            request(
+                session,
+                f"Upload database backup {file_id}",
+                "POST",
+                "https://www.googleapis.com/upload/drive/v3/files",
+                allow_conflict=True,
+                params={"uploadType": "multipart", "supportsAllDrives": "true"},
+                data=body,
+                headers={
+                    "Content-Type": f"multipart/related; boundary={boundary}",
+                    "Content-Length": str(length),
+                },
+            )
+        except requests.RequestException:
+            # The server may have created it before the response was lost.
+            # Verify the assigned ID below without blindly resending the upload.
+            print(f'WARNING: Upload response uncertain; checking Drive file {file_id}.')
     result = request(
         session,
         "Verify database backup upload",

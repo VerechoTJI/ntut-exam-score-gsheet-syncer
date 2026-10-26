@@ -23,10 +23,13 @@ order. Retain the client's canonical `Q1...Qn` uploaded keys as a supported inpu
 alongside actual puzzle IDs. Reject ambiguous or mismatched layouts before writes.
 Skip only each student's system-errored question and print its available cause.
 
-Use exponential retry delays of 1, 2, 4 seconds within a 10-second total budget
-per failing external operation, including request time. Bound request timeouts
-by the remaining budget. No extra request or sleep after the deadline. Exhaustion
-stops one-shot and periodic runs with nonzero status and the actual final cause.
+Use backend retry delays of 1, 2, 4, 8, ... seconds. The clarified
+`BACKOFF_MAX_SECONDS` setting (default 10) stops retries when the next delay
+would exceed it. It is not a total operation budget. Each backend HTTP attempt
+retains its 10-second connect/read timeout. Google HTTP calls instead use
+`GOOGLE_TIMEOUT_SECONDS` (default 30); let the SDK handle authentication retries.
+Document both names, meanings and units in `.env` and `.env.template`.
+Exhaustion stops one-shot and periodic runs with the actual final cause.
 
 ## Sources inspected
 

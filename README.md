@@ -86,7 +86,16 @@ Unknown IDs, duplicate destinations, ambiguous aliases and layout/subtask mismat
 
 Only changed cells upload. Ordinary failures clear previous pass flags. An existing question with no rule results writes 1 for its rule flag, matching the client's no-penalty policy. System-error markers (`SE`, `CTLE`, `ABORTED`, or explicit system attribution) skip only that student's affected question, preserve existing cells, and print its available cause. Other questions continue. Backend students absent from the roster warn and are skipped.
 
-`INTERVAL=0`, empty or negative runs once; positive values poll. Invalid text warns and falls back to one shot. Ctrl+C stops periodic mode. An external operation has a 10-second request/retry budget; exponential delays of 1/2/4 seconds are limited by remaining time. Failures print HTTP/provider/transport causes with tokens redacted. Exhaustion stops even periodic mode with exit status 1. Keep one writer per classroom tab.
+`INTERVAL=0`, empty or negative runs once; positive values poll. Invalid text warns and falls back to one shot. Ctrl+C stops periodic mode. Backend failures retry with exponential delays starting at 1 second. `BACKOFF_MAX_SECONDS` (default `10`) stops retries when the **next delay exceeds the setting**: wait 1/2/4/8 seconds, then stop if the next failed attempt would require waiting 16 seconds. This is not a total elapsed-time budget. Each backend request separately uses a 10-second connect/read timeout; a continuously progressing download may take longer. Failures print HTTP/provider/transport causes with tokens redacted. Exhaustion stops even periodic mode with exit status 1. Keep one writer per classroom tab.
+
+Configure these independent settings in `.env` (names and descriptions are also in `.env.template`):
+
+| Variable | Default (seconds) | Meaning |
+| --- | --- | --- |
+| `BACKOFF_MAX_SECONDS` | `10` | Backend retry-delay stopping threshold; the next delay above it stops the operation. |
+| `GOOGLE_TIMEOUT_SECONDS` | `30` | Per-request connect/read timeout for Sheets, Drive and OAuth token HTTP calls. |
+
+Both accept positive finite numbers; unset or blank uses the default. Google authentication refresh/retries remain SDK-managed and do not use backend backoff. Google timeout does not cap total login/transfer duration or the user's browser consent time. No process cancellation or replacement HTTP library is introduced.
 
 ## Database backups to My Drive
 
@@ -162,10 +171,12 @@ Files are named `classroom_timestamp.sqlite`, for example
 Asia/Taipei offset. Invalid classroom labels are rejected. Downloaded bytes are
 checked for completeness, SQLite header and read-only integrity before uploading.
 The original bytes are preserved. A stable Drive file ID prevents duplicate
-creates on retry; destination, filename, size and MD5 are verified afterward.
+creates during SDK authentication replay; destination, filename, size and MD5 are verified afterward.
 Success prints the file URL. Temporary local files are removed on success or
-failure. Each external request has the same bounded retry policy as score sync;
-an exhausted operation stops the process. Existing Drive backups are retained.
+failure. If an upload response is lost, verify the assigned file ID without
+blindly resending the upload. An unverified upload fails the job. Backend download
+failures use `BACKOFF_MAX_SECONDS`; Google HTTP calls use `GOOGLE_TIMEOUT_SECONDS`
+without the application's backend retry loop. Existing Drive backups are retained.
 [Google upload/retry documentation](https://developers.google.com/workspace/drive/api/guides/manage-uploads).
 
 ## Verification

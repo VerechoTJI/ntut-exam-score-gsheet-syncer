@@ -187,10 +187,22 @@ student ID, question ID, and available cause. Other questions continue. Ordinary
 student failures still sync. Do not infer a backend submission status that is
 absent from the client-uploaded payload.
 
-External request failures use exponential backoff (1, 2, 4 seconds), with a total
-10-second request-and-retry budget for the failing operation. Print each cause
-and the final cause, excluding credentials; after exhaustion stop the process
-with a nonzero exit status, including in periodic mode.
+Backend request failures use exponential backoff (1, 2, 4, 8, ... seconds).
+Following the user's clarified requirement, `BACKOFF_MAX_SECONDS` (default 10)
+is the stopping threshold for the next delay, not a total operation deadline:
+after waiting 1/2/4/8 seconds, stop if another failure would need a 16-second
+wait. Each backend attempt retains a 10-second connect/read timeout; there is
+no hard wall-clock cap on a continuously progressing download. Print each cause
+and the final cause, excluding credentials; stop with nonzero exit status after
+exhaustion, including in periodic mode.
+
+Google requests are outside backend backoff. `GOOGLE_TIMEOUT_SECONDS` (default
+30) configures each Sheets/Drive/token HTTP timeout; authentication retries are
+managed by the Google SDK, including 401 refresh. Browser consent time is not
+limited by this setting. Rewind multipart bodies when the SDK replays requests.
+For a lost upload response, reconcile the assigned ID/size/checksum rather than
+resend the upload blindly. Both settings require positive finite seconds and
+are documented by name and purpose in `.env.template`.
 
 The user confirmed the agreed classroom layout contains only score columns, so
 no separate speculative notes-column feature is required. Generated Combined
