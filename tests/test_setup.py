@@ -37,10 +37,10 @@ def test_setup_dry_run_and_eof_never_write(monkeypatch):
     book.batch_update.assert_not_called()
 
 
-def test_empty_target_setup_preserves_other_tabs(monkeypatch):
+def test_confirmed_setup_preserves_other_tabs(monkeypatch):
     book = book_with_existing()
     monkeypatch.setattr(setup_sheet, 'get_spreadsheet', lambda *a: book)
-    assert setup_sheet.setup_workbook(example_config(), example_roster(), 'url') == 0
+    assert setup_sheet.setup_workbook(example_config(), example_roster(), 'url', input_fn=lambda prompt:'yes') == 0
     requests = book.batch_update.call_args.args[0]['requests']
     assert sum('addSheet' in r for r in requests) == 4
     assert any('deleteConditionalFormatRule' in r for r in requests)
@@ -53,6 +53,41 @@ def test_empty_target_setup_preserves_other_tabs(monkeypatch):
     structural = [i for i,r in enumerate(requests) if 'addSheet' in r or 'updateSheetProperties' in r]
     writes = [i for i,r in enumerate(requests) if 'updateCells' in r]
     assert max(structural) < min(writes)
+
+
+@pytest.mark.parametrize('answer', ['yes','no','',None])
+def test_chart_only_target_requires_confirmation(monkeypatch,capsys,answer):
+    book = book_with_existing()
+    monkeypatch.setattr(setup_sheet,'get_spreadsheet',lambda *a:book)
+    prompt = Mock(side_effect=EOFError) if answer is None else Mock(return_value=answer)
+    assert setup_sheet.setup_workbook(example_config(),example_roster(),'https://target.test',input_fn=prompt) == 0
+    prompt.assert_called_once()
+    assert book.batch_update.called == (answer == 'yes')
+    output = capsys.readouterr().out
+    assert 'WARNING' in output and '1222:' in output and '1 charts' in output
+
+
+def test_truly_empty_target_does_not_prompt_for_unrelated_chart(monkeypatch):
+    book = book_with_existing()
+    metadata = book.fetch_sheet_metadata.return_value
+    metadata['sheets'][0]['charts'] = []
+    metadata['sheets'][1]['charts'] = [{'chartId':77}]
+    monkeypatch.setattr(setup_sheet,'get_spreadsheet',lambda *a:book)
+    prompt = Mock(side_effect=AssertionError('An empty target should not prompt'))
+    assert setup_sheet.setup_workbook(example_config(),example_roster(),'url',input_fn=prompt) == 0
+    prompt.assert_not_called()
+    requests = book.batch_update.call_args.args[0]['requests']
+    assert not any(r.get('deleteEmbeddedObject') == {'objectId':77} for r in requests)
+
+
+def test_chart_only_preview_never_prompts_or_writes(monkeypatch,capsys):
+    book = book_with_existing()
+    monkeypatch.setattr(setup_sheet,'get_spreadsheet',lambda *a:book)
+    prompt = Mock(side_effect=AssertionError('Dry-run must not prompt'))
+    assert setup_sheet.setup_workbook(example_config(),example_roster(),'url',dry_run=True,input_fn=prompt) == 0
+    prompt.assert_not_called()
+    book.batch_update.assert_not_called()
+    assert '1 charts' in capsys.readouterr().out
 
 
 def test_setup_arguments_are_required(monkeypatch, tmp_path):

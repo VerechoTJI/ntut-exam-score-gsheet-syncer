@@ -62,23 +62,24 @@ def setup_workbook(config, roster, url, dry_run=False, input_fn=None):
     plans.update({title: classroom_plan(config, roster) for title in CLASSROOMS})
     book = get_spreadsheet(url)
     metadata = book.fetch_sheet_metadata()
-    existing = {s['properties']['title'] for s in metadata['sheets']}
+    existing = {s['properties']['title']: s for s in metadata['sheets']}
     print(f'Setup destination: {book.title}\n{url}')
     populated = False
     for title, plan in plans.items():
         values = book.worksheet(title).get_all_values(value_render_option='FORMULA') if title in existing else []
         cells = [value for row in values for value in row if value != '']
-        if cells:
+        charts = len(existing.get(title, {}).get('charts', []))
+        if cells or charts:
             populated = True
             formulas = sum(isinstance(value, str) and value.startswith('=') for value in cells)
-            print(f'  {title}: {max(0, len(values)-plan["frozen_rows"])} data rows; {len(cells)} occupied cells; {formulas} formulas')
+            print(f'  {title}: {max(0, len(values)-plan["frozen_rows"])} data rows; {len(cells)} occupied cells; {formulas} formulas; {charts} charts')
         else:
             print(f'  {title}: empty/missing; create {len(roster)} student rows')
     if dry_run:
         print('Dry-run: would initialize the five target tabs; no writes performed.')
         return 0
     if populated:
-        print('WARNING: Setup replaces target tab contents and formatting. Other tabs stay unchanged.')
+        print('WARNING: Setup replaces target tab contents, formatting and charts. Other tabs stay unchanged.')
         try:
             answer = (input_fn or input)('Continue? [y/N] ')
         except EOFError:

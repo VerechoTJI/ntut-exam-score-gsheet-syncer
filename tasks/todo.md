@@ -312,6 +312,17 @@ wait, not the accumulated request/retry duration. Google authentication is SDK-m
 - [x] Full suite: 215 tests, exact 100% statement/branch gate. Independent review
   passed. Commit: `fix: preserve questions with client rule-engine failures`.
 
+## 17. Confirm replacement of chart-only target tabs
+
+- [x] Count target charts from sheet metadata alongside cell/formula content,
+  include the count in the summary, and explicitly warn about chart replacement.
+- [x] Reproduce the former silent overwrite with chart-only targets. Verify
+  yes/no/Enter/EOF, dry-run, truly empty targets, and unrelated chart preservation.
+- [x] Full suite: 221 tests; 1,149/1,149 statements and 388/388 branches covered.
+  Independent review passed and confirmed all three pre-merge findings resolved
+  under the clarified backoff requirement.
+- Commit: `fix: confirm overwrites of chart-only target sheets`.
+
 ## Execution ledger
 
 | Task | Test/coverage evidence | Review | Commit |
@@ -333,6 +344,7 @@ wait, not the accumulated request/retry duration. Google authentication is SDK-m
 | 14 | 190 tests; 1143/1143 statements; 390/390 branches; 13 URL regression/rejection cases | Independent review passed | `fix: accept account-specific Google Drive folder URLs` |
 | 15 | 210 tests; 1146/1146 statements; 386/386 branches; native SDK refresh replay and uncertain-upload checks | Independent review passed; truncated-response blocker resolved | `feat: configure backend backoff caps and Google timeouts` |
 | 16 | 215 tests; exact 100% statement/branch gate; client engine-marker integration regressions | Independent review passed | `fix: preserve questions with client rule-engine failures` |
+| 17 | 221 tests; 1149/1149 statements; 388/388 branches; chart-only cancellation/preview regressions | Independent review passed; pre-merge findings resolved | `fix: confirm overwrites of chart-only target sheets` |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of

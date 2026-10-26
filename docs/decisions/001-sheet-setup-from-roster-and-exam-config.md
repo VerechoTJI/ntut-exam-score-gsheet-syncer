@@ -123,11 +123,11 @@ The final view still applies the exam's configured scoring rules and caps.
 ### Existing-content review before writing
 
 Before mutation, inspect the five target tabs and show the destination title and
-URL. If any target tab contains data or formulas:
+URL. If any target tab contains data, formulas or charts (even with no cell values):
 
 1. Show a short per-tab summary, such as student/data row counts and whether
-   formulas or grades are present.
-2. Warn that setup will replace the target tabs' contents and formatting.
+   formulas or grades are present, and the chart count.
+2. Warn that setup will replace the target tabs' contents, formatting and charts.
 3. Ask `Continue? [y/N]` and proceed only on an explicit `y` or `yes`.
 
 Enter, a negative response, or an unavailable confirmation must not authorize

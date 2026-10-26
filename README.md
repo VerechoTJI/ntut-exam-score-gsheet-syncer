@@ -48,7 +48,7 @@ uv run python main.py --setup-sheet \
 
 Remove `--dry-run` to apply. Setup requires explicit URL, config and roster arguments; there is no environment destination fallback and no new spreadsheet is created. Select `--roster-sheet` when multiple worksheets have identity headers. Columns are located by `班級`, `姓名`, `學號` regardless of position. Student IDs remain text, roster order is preserved, and coursework columns are ignored. Invalid/duplicate identities or invalid configs stop before writes.
 
-Setup initializes `1222`, `1223`, `335`, `Combined`, and `成績登記`. It identifies the destination, summarizes existing data/formulas, and warns before replacing target contents and formatting. Only `y` or `yes` continues; Enter, refusal or EOF cancels. Unrelated tabs remain unchanged. Dry-run reads but never writes. Stop classroom sync processes before replacing their tabs.
+Setup initializes `1222`, `1223`, `335`, `Combined`, and `成績登記`. It identifies the destination, summarizes existing data/formulas and chart counts, and warns before replacing target contents, formatting and charts. A target containing only charts still requires confirmation. Only `y` or `yes` continues; Enter, refusal or EOF cancels. Unrelated tabs remain unchanged. Dry-run reads but never writes. Stop classroom sync processes before replacing their tabs.
 
 Combined SUMs results by student ID across classrooms, independently of row order. Values above 1 remain visible and are highlighted for investigation. The final view uses exact subtask weights, one failed-rule multiplier per question, section caps, and rounding once at the end. No extra 100-point cap is imposed. Raw score excludes penalties and caps.
 
