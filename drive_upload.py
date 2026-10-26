@@ -1,4 +1,5 @@
 """Byte-preserving Drive upload using one stable file ID across retries."""
+
 from datetime import datetime, timedelta, timezone
 import json
 import re
@@ -12,75 +13,140 @@ from urllib3.util import Timeout
 from exam_config import require
 import retry
 
-API = 'https://www.googleapis.com/drive/v3/files'
+API = "https://www.googleapis.com/drive/v3/files"
 
 
 def backup_name(classroom, now=None):
-    require(re.fullmatch(r'[A-Za-z0-9_-]+', classroom), 'Invalid classroom label for backup filename')
+    require(
+        re.fullmatch(r"[A-Za-z0-9_-]+", classroom),
+        "Invalid classroom label for backup filename",
+    )
     taipei = timezone(timedelta(hours=8))
     moment = datetime.now(taipei) if now is None else now.astimezone(taipei)
-    return classroom + '_' + moment.strftime('%Y%m%dT%H%M%S%f%z') + '.sqlite'
+    return classroom + "_" + moment.strftime("%Y%m%dT%H%M%S%f%z") + ".sqlite"
 
 
 def folder_id(value):
     parsed = urlparse(value)
     if parsed.scheme:
         folder_path = re.fullmatch(
-            r'/drive/(?:u/[0-9]+/)?folders/([A-Za-z0-9_-]+)/?', parsed.path
+            r"/drive/(?:u/[0-9]+/)?folders/([A-Za-z0-9_-]+)/?", parsed.path
         )
-        require(parsed.scheme == 'https' and parsed.netloc == 'drive.google.com'
-                and folder_path, 'Invalid Google Drive folder URL')
+        require(
+            parsed.scheme == "https"
+            and parsed.netloc == "drive.google.com"
+            and folder_path,
+            "Invalid Google Drive folder URL",
+        )
         value = folder_path.group(1)
-    require(re.fullmatch(r'[A-Za-z0-9_-]+', value), 'Invalid Google Drive folder ID')
+    require(re.fullmatch(r"[A-Za-z0-9_-]+", value), "Invalid Google Drive folder ID")
     return value
 
 
 def request(session, label, method, url, allow_conflict=False, **kwargs):
     def attempt(remaining):
-        body = kwargs.get('data')
+        body = kwargs.get("data")
         if body is not None:
             body.seek(0)
-        response = session.request(method, url, timeout=Timeout(total=remaining), **kwargs)
+        response = session.request(
+            method, url, timeout=Timeout(total=remaining), **kwargs
+        )
         if not (allow_conflict and response.status_code == 409):
             response.raise_for_status()
         return response
+
     return retry.run(label, attempt)
 
 
 def writable_folder(session, destination):
     folder = folder_id(destination)
-    info = request(session, 'Inspect backup folder', 'GET', API+'/'+folder,
-                   params={'fields':'id,mimeType,capabilities(canAddChildren)', 'supportsAllDrives':'true'}).json()
-    require(info.get('mimeType') == 'application/vnd.google-apps.folder'
-            and info.get('capabilities',{}).get('canAddChildren'), 'Backup folder is not writable by the OAuth user')
+    info = request(
+        session,
+        "Inspect backup folder",
+        "GET",
+        API + "/" + folder,
+        params={
+            "fields": "id,mimeType,capabilities(canAddChildren)",
+            "supportsAllDrives": "true",
+        },
+    ).json()
+    require(
+        info.get("mimeType") == "application/vnd.google-apps.folder"
+        and info.get("capabilities", {}).get("canAddChildren"),
+        "Backup folder is not writable by the OAuth user",
+    )
     return folder
 
 
 def upload_backup(session, artifact, destination, name):
     folder = writable_folder(session, destination)
-    ids = request(session, 'Allocate backup file ID', 'GET', API+'/generateIds',
-                  params={'count':1,'space':'drive','type':'files'}).json().get('ids')
-    require(isinstance(ids,list) and len(ids)==1 and isinstance(ids[0],str), 'Drive did not return a file ID')
+    ids = (
+        request(
+            session,
+            "Allocate backup file ID",
+            "GET",
+            API + "/generateIds",
+            params={"count": 1, "space": "drive", "type": "files"},
+        )
+        .json()
+        .get("ids")
+    )
+    require(
+        isinstance(ids, list) and len(ids) == 1 and isinstance(ids[0], str),
+        "Drive did not return a file ID",
+    )
     file_id = ids[0]
     boundary = uuid.uuid4().hex
-    metadata = {'id':file_id, 'name':name, 'parents':[folder], 'mimeType':'application/vnd.sqlite3'}
-    prefix = (f'--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
-              + json.dumps(metadata) + f'\r\n--{boundary}\r\nContent-Type: application/vnd.sqlite3\r\n\r\n').encode('utf-8')
-    with SpooledTemporaryFile(max_size=1048576, mode='w+b', dir=artifact['path'].parent) as body:
+    metadata = {
+        "id": file_id,
+        "name": name,
+        "parents": [folder],
+        "mimeType": "application/vnd.sqlite3",
+    }
+    prefix = (
+        f"--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"
+        + json.dumps(metadata)
+        + f"\r\n--{boundary}\r\nContent-Type: application/vnd.sqlite3\r\n\r\n"
+    ).encode("utf-8")
+    with SpooledTemporaryFile(
+        max_size=1048576, mode="w+b", dir=artifact["path"].parent
+    ) as body:
         body.write(prefix)
-        with artifact['path'].open('rb') as source:
+        with artifact["path"].open("rb") as source:
             shutil.copyfileobj(source, body)
-        body.write(f'\r\n--{boundary}--\r\n'.encode('ascii'))
+        body.write(f"\r\n--{boundary}--\r\n".encode("ascii"))
         length = body.tell()
-        request(session, 'Upload database backup', 'POST',
-                'https://www.googleapis.com/upload/drive/v3/files', allow_conflict=True,
-                params={'uploadType':'multipart','supportsAllDrives':'true'}, data=body,
-                headers={'Content-Type':f'multipart/related; boundary={boundary}', 'Content-Length':str(length)})
-    result = request(session, 'Verify database backup upload', 'GET', API+'/'+file_id,
-                     params={'fields':'id,name,parents,size,md5Checksum,webViewLink','supportsAllDrives':'true'}).json()
-    require(result.get('id')==file_id and result.get('name')==name
-            and result.get('parents')==[folder] and str(result.get('size'))==str(artifact['size'])
-            and result.get('md5Checksum')==artifact['md5'], f'Drive backup verification failed for file {file_id}')
-    url = result.get('webViewLink') or f'https://drive.google.com/file/d/{file_id}/view'
-    print(f'Uploaded {name}: {url}')
+        request(
+            session,
+            "Upload database backup",
+            "POST",
+            "https://www.googleapis.com/upload/drive/v3/files",
+            allow_conflict=True,
+            params={"uploadType": "multipart", "supportsAllDrives": "true"},
+            data=body,
+            headers={
+                "Content-Type": f"multipart/related; boundary={boundary}",
+                "Content-Length": str(length),
+            },
+        )
+    result = request(
+        session,
+        "Verify database backup upload",
+        "GET",
+        API + "/" + file_id,
+        params={
+            "fields": "id,name,parents,size,md5Checksum,webViewLink",
+            "supportsAllDrives": "true",
+        },
+    ).json()
+    require(
+        result.get("id") == file_id
+        and result.get("name") == name
+        and result.get("parents") == [folder]
+        and str(result.get("size")) == str(artifact["size"])
+        and result.get("md5Checksum") == artifact["md5"],
+        f"Drive backup verification failed for file {file_id}",
+    )
+    url = result.get("webViewLink") or f"https://drive.google.com/file/d/{file_id}/view"
+    print(f"Uploaded {name}: {url}")
     return url
