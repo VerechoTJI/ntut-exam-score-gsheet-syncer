@@ -264,6 +264,17 @@ Commit: `feat: schedule independent database backups and document OAuth setup`.
   the suggested regression assertion that chart deletion precedes grid resizing.
   Commit: `fix: recreate reference workbook styling and distribution plot`.
 
+## 14. Accept account-specific Google Drive folder URLs
+
+- [x] Reproduce rejection of `/drive/u/5/folders/ID` before fixing the parser.
+- [x] Accept optional nonnegative account indices while retaining raw IDs,
+  standard folder URLs, query strings, fragments and a trailing slash. Match
+  the entire folder path and retain exact HTTPS/host validation.
+- [x] Add 13 regression/rejection cases. Full suite: 190 tests; exact coverage
+  gate passes with 1,143/1,143 statements and 390/390 branches. Independent
+  review passed. Preserve unrelated existing formatting and `.gitignore` edits.
+- Commit: `fix: accept account-specific Google Drive folder URLs`.
+
 ## Execution ledger
 
 | Task | Test/coverage evidence | Review | Commit |
@@ -282,6 +293,7 @@ Commit: `feat: schedule independent database backups and document OAuth setup`.
 | 11 | 163 tests; 100%; live OAuth upload awaits client JSON/sign-in | Passed offline/code review | `feat: authorize user Drive uploads with verified idempotent backups` |
 | 12 | 173 tests; 1048/1048 statements; 364/364 branches; CLI preview passes | Passed code/offline review; live consent/upload pending | `feat: schedule independent database backups and document OAuth setup` |
 | 13 | 177 tests; 1142/1142 statements; 390/390 branches; native band/empty-roster checks; five-tab visual checks | Independent five-axis review passed; 108 synthetic geometries checked | `fix: recreate reference workbook styling and distribution plot` |
+| 14 | 190 tests; 1143/1143 statements; 390/390 branches; 13 URL regression/rejection cases | Independent review passed | `fix: accept account-specific Google Drive folder URLs` |
 
 Separate workspace correction: `../exam-config.json` puzzle IDs renumbered 01–11
 in existing order. Verified uniqueness, sequence, JSON validity, and equality of

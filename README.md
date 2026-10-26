@@ -147,6 +147,8 @@ The first backup runs immediately, then the next starts 300 seconds after the
 previous finishes. Add `--dry-run` for one preview without HTTP, credentials or
 uploads. Set `--backup-interval 0` for one real backup to verify sign-in and access.
 
+`--backup-folder` accepts a folder ID, a `/drive/folders/ID` URL, or an account-specific `/drive/u/5/folders/ID` URL. Any nonnegative account index is supported; query strings, fragments and a trailing slash are allowed.
+
 To run both jobs in one process, omit `--backup-only` and add `--config` for score
 mapping. Score sync uses `INTERVAL`; backup uses its own timer. Jobs are serialized
 so they cannot overlap. Alternatively run the backup-only command alongside your

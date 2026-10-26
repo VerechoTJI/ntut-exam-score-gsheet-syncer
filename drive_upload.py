@@ -25,9 +25,12 @@ def backup_name(classroom, now=None):
 def folder_id(value):
     parsed = urlparse(value)
     if parsed.scheme:
+        folder_path = re.fullmatch(
+            r'/drive/(?:u/[0-9]+/)?folders/([A-Za-z0-9_-]+)/?', parsed.path
+        )
         require(parsed.scheme == 'https' and parsed.netloc == 'drive.google.com'
-                and parsed.path.startswith('/drive/folders/'), 'Invalid Google Drive folder URL')
-        value = parsed.path.rstrip('/').split('/')[-1]
+                and folder_path, 'Invalid Google Drive folder URL')
+        value = folder_path.group(1)
     require(re.fullmatch(r'[A-Za-z0-9_-]+', value), 'Invalid Google Drive folder ID')
     return value
 

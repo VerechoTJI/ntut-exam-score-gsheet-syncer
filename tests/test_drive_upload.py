@@ -8,6 +8,32 @@ import requests
 import drive_upload
 
 
+@pytest.mark.parametrize('destination', [
+    '1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq',
+    'https://drive.google.com/drive/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq',
+    'https://drive.google.com/drive/u/5/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq',
+    'https://drive.google.com/drive/u/0/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq/?usp=sharing#view',
+    'https://drive.google.com/drive/u/12/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq?usp=sharing',
+])
+def test_folder_id_accepts_account_scoped_urls(destination):
+    assert drive_upload.folder_id(destination) == '1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq'
+
+
+@pytest.mark.parametrize('destination', [
+    'http://drive.google.com/drive/u/5/folders/folder',
+    'https://drive.google.com.evil.test/drive/u/5/folders/folder',
+    'https://drive.google.com@evil.test/drive/u/5/folders/folder',
+    'https://drive.google.com/drive/u/account/folders/folder',
+    'https://drive.google.com/drive/u/-1/folders/folder',
+    'https://drive.google.com/drive/u//folders/folder',
+    'https://drive.google.com/drive/u/5/folders/',
+    'https://drive.google.com/drive/folders/folder/child',
+])
+def test_folder_id_rejects_invalid_account_urls(destination):
+    with pytest.raises(ValueError):
+        drive_upload.folder_id(destination)
+
+
 def response(data,status=200):
     r=Mock(status_code=status)
     r.json.return_value=data
