@@ -1,187 +1,271 @@
 # NTUT Exam Score GSheet Syncer
 
-Upload the on-machine client's scoreboard from v2 to a classroom worksheet, or initialize a five-tab workbook from an Excel roster and exam config. Judging and highest/current selection remain in the on-machine client.
+將 v2 後端的學生端評測結果同步到 Google Sheets，並定期把 SQLite 資料庫備份到 Google Drive。評測與最高分選擇仍由上機測驗學生端負責；本程式只負責同步、建表與備份。
 
-## Install
+## 部署流程
 
-Python 3.13+ and uv are required. Run from this directory.
-All file arguments below are relative to this directory. Replace `../roster.xlsx`
-(PowerShell: `..\roster.xlsx`) with the relative path to your own Excel roster.
+依序完成：**準備憑證 → 建立 Google Sheet 與備份資料夾 → 放入名冊／設定並初始化 → 填寫 `.env`、驗證及啟動**。
 
-PowerShell:
+先將本專案放到部署機，安裝 Python 3.13+ 與 [uv](https://docs.astral.sh/uv/getting-started/installation/)，並在 **本 README 所在資料夾**開啟 shell。下列檔案路徑都相對於這個資料夾；每個指令都有 PowerShell 與 Bash 版本。
+
+### 1. 準備 credentials 與 Drive OAuth
+
+先安裝專案相依套件。
+
+PowerShell：
 
 ```powershell
 uv sync --frozen
 ```
 
-Bash:
+Bash：
 
 ```bash
 uv sync --frozen
 ```
 
-Put the Google service-account key in `credentials.json`, enable Sheets/Drive APIs, and share the target Sheet with the service-account email as an editor. Never commit the key or `.env`.
+本程式使用兩種不同身分，JSON 檔不能互換：
 
-## Set up the workbook
+| 用途 | Google 身分 | 檔案 |
+| --- | --- | --- |
+| 建立工作表內容、同步分數 | Service account | `credentials.json` |
+| 上傳備份到 My Drive | 你的 Google 帳號，透過 Desktop OAuth 登入 | `drive_oauth_client.json`，登入後另產生 `drive_token.json` |
 
-PowerShell:
+**建立 Service account 憑證：**
+
+1. 在 [Google Cloud Console](https://console.cloud.google.com/) 選擇或建立專案，啟用 **Google Sheets API** 與 **Google Drive API**。
+2. 到「IAM 與管理員 → 服務帳戶」建立 Service account，再到該帳戶的「金鑰」建立並下載 JSON 金鑰。
+3. 將金鑰命名為 `credentials.json`，放在本專案資料夾。
+4. 記下 JSON 裡的 `client_email`，下一步要把試算表分享給這個 email。寫入權限由試算表的分享設定授予，不需要為此賦予整個 Cloud 專案的 Editor 角色。
+
+**建立 Drive OAuth 憑證並登入：**
+
+1. 在同一個 Cloud 專案設定 Google Auth Platform／OAuth 同意畫面的應用程式資訊與 Audience。
+2. 若使用 External 且發布狀態為 Testing，將要備份的 Google 帳號加入 Test users。
+3. 到 Clients／憑證建立 **Desktop app** OAuth client，下載 JSON，命名為 `drive_oauth_client.json`，放在本專案資料夾。
+4. 執行以下指令，在開啟的瀏覽器登入之後要上傳備份的帳號，並完成授權。
+
+PowerShell：
+
+```powershell
+uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
+```
+
+Bash：
+
+```bash
+uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
+```
+
+成功後會在本機產生 `drive_token.json`，讓之後的備份自動更新 token；排程執行期間不會自行跳出瀏覽器要求登入。預設使用完整 Drive scope，以支援既有 My Drive 資料夾。若要改檔案位置，可指定 `--oauth-client`／`--oauth-token`，之後執行時也須使用相同路徑。
+
+Google External app 在 Testing 狀態下，這類授權的 refresh token 通常會在七天後失效；考前應確認授權仍有效，必要時重新執行登入指令。[Google OAuth 說明](https://developers.google.com/identity/protocols/oauth2#expiration)
+
+### 2. 建立新的 Google Sheet 並設定存取權
+
+1. 使用考試管理帳號建立一份空白 Google 試算表，取好名稱。
+2. 開啟「共用」，將「一般存取權」設成 **知道連結的任何人 → 檢視者**。這讓持有連結的人可以查看；**不要把一般存取權設為編輯者**。
+3. 在同一個共用視窗，另外加入 `credentials.json` 的 **`client_email`**，設為 **編輯者**。只有公開檢視權限，仍不足以讓程式寫入。
+4. 複製試算表網址。下一步初始化時先放進 `--sheet-url`，第 4 步再寫入 `.env`。
+5. 在 My Drive 建立或選定備份資料夾，例如 `db-backup`，確認第 1 步 OAuth 登入的帳號有新增檔案的權限，並複製資料夾網址。
+
+「知道連結的任何人」會讓持有連結的人看到名冊、學號與成績。若不需要公開檢視，可以改成「受限制」並只分享給監考者；只要 Service account 有編輯權限，程式仍可運作。[Google 分享權限說明](https://support.google.com/drive/answer/2494822)
+
+**備份資料夾維持受限存取即可，不需要公開。** Service account 負責 Sheets，OAuth 登入帳號負責 Drive 備份，請分別確認兩者的權限。[Service account 存取說明](https://developers.google.com/workspace/guides/create-credentials#service-account)
+
+### 3. 放入 roster 與 config，執行初始化指令
+
+將檔案放在專案資料夾，以下使用這些檔名：
+
+```text
+ntut-exam-score-gsheet-syncer/
+  main.py
+  credentials.json
+  drive_oauth_client.json
+  drive_token.json
+  roster.xlsx
+  exam-config.json
+  .env.template
+```
+
+- `roster.xlsx`：Excel 名冊。選定的工作表第一列須包含 `班級`、`姓名`、`學號`，欄位順序不限；其他課程成績不會匯入。學號保存為文字，學生依名冊順序排列，缺漏或重複學號會中止初始化。
+- `exam-config.json`：這次考試的 **完整 v2 設定**，須包含 `sections[].puzzles[]`、子題配分等資料；不是只有連線／時間選項的學生端設定。
+- 下列以名冊工作表 `工作表1` 為例；請換成實際名稱。如果多張工作表都有身分欄位，必須明確指定 `--roster-sheet`。
+
+先預覽。將 `TARGET_ID` 換成第 2 步建立的試算表 ID，或直接貼完整網址。
+
+PowerShell：
 
 ```powershell
 uv run python main.py --setup-sheet `
   --sheet-url "https://docs.google.com/spreadsheets/d/TARGET_ID/edit" `
-  --config "..\exam-config.json" `
-  --roster "..\roster.xlsx" `
+  --config "exam-config.json" `
+  --roster "roster.xlsx" `
   --roster-sheet "工作表1" `
   --dry-run
 ```
 
-Bash:
+Bash：
 
 ```bash
 uv run python main.py --setup-sheet \
   --sheet-url "https://docs.google.com/spreadsheets/d/TARGET_ID/edit" \
-  --config "../exam-config.json" \
-  --roster "../roster.xlsx" \
+  --config "exam-config.json" \
+  --roster "roster.xlsx" \
   --roster-sheet "工作表1" \
   --dry-run
 ```
 
-Remove `--dry-run` to apply. Setup requires explicit URL, config and roster arguments; there is no environment destination fallback and no new spreadsheet is created. Select `--roster-sheet` when multiple worksheets have identity headers. Columns are located by `班級`, `姓名`, `學號` regardless of position. Student IDs remain text, roster order is preserved, and coursework columns are ignored. Invalid/duplicate identities or invalid configs stop before writes.
+確認目的地與名冊無誤後，執行真正的初始化。
 
-Setup initializes `1222`, `1223`, `335`, `Combined`, and `成績登記`. It identifies the destination, summarizes existing data/formulas and chart counts, and warns before replacing target contents, formatting and charts. A target containing only charts still requires confirmation. Only `y` or `yes` continues; Enter, refusal or EOF cancels. Unrelated tabs remain unchanged. Dry-run reads but never writes. Stop classroom sync processes before replacing their tabs.
-
-Combined SUMs results by student ID across classrooms, independently of row order. Values above 1 remain visible and are highlighted for investigation. The final view uses exact subtask weights, one failed-rule multiplier per question, section caps, and rounding once at the end. No extra 100-point cap is imposed. Raw score excludes penalties and caps.
-
-Setup reproduces the [reference workbook's layout](https://docs.google.com/spreadsheets/d/12cAocV3Pp6FU-5aDu_zFSh2Gyh3b2x8V2qWdwx0huCY/edit): white headers, black group borders, compact score columns, Microsoft JhengHei score text, smaller identity text, green/red final grades, hidden zero text, and gray raw scores. The question groups and weights adapt to your config. Six columns separate the final and raw scores; the sidebar contains the yellow `已離場` label, pass/fail counts and percentages, score-band counts, and cumulative counts.
-
-The sidebar includes the reference's two-series **line plot**, `分數區段人數統計和累計人數`, at 338 × 209 pixels. Its twelve bands cover `100+`, `90-99` through `10-19`, `1-9`, and `0`. All counts use the same roster extent and exclude blank student IDs. Existing charts on the five setup tabs are replaced after the normal overwrite confirmation. The reference file itself is never modified.
-
-## Synchronize scores
-
-Copy `.env.template` to `.env` and set backend URL/admin token, Sheet URL, classroom tab, and interval. Set `SHEET_TITLE` to one classroom source tab, not Combined or the final view. One process targets one classroom/backend.
-
-PowerShell:
+PowerShell：
 
 ```powershell
-uv run python main.py --config "..\exam-config.json" --dry-run
-uv run python main.py --config "..\exam-config.json"
+uv run python main.py --setup-sheet `
+  --sheet-url "https://docs.google.com/spreadsheets/d/TARGET_ID/edit" `
+  --config "exam-config.json" `
+  --roster "roster.xlsx" `
+  --roster-sheet "工作表1"
 ```
 
-Bash:
+Bash：
 
 ```bash
-uv run python main.py --config "../exam-config.json" --dry-run
-uv run python main.py --config "../exam-config.json"
+uv run python main.py --setup-sheet \
+  --sheet-url "https://docs.google.com/spreadsheets/d/TARGET_ID/edit" \
+  --config "exam-config.json" \
+  --roster "roster.xlsx" \
+  --roster-sheet "工作表1"
 ```
 
-`--sheet-url` overrides `SHEET_URL`. Config order flattens `sections[].puzzles[]` into numbered question groups, preserving subtask order. Actual puzzle IDs and canonical client `Q1...Qn` payloads are supported. Use the same config for setup and sync. Without `--config`, legacy numbered payloads remain supported.
+程式會建立或初始化 `1222`、`1223`、`335`、`Combined`、`成績登記` 五個分頁，包含名冊、跨頁公式、配分／規則、分區與最終成績、統計與折線圖。它只修改指定試算表，不會替你建立新的 Google 檔案。
 
-Optional `--question-map mapping.json` overrides config order and requires `--config`. It maps actual IDs to one-based Sheet groups, for example:
+初始化一定要明確提供 `--sheet-url`、`--config`、`--roster`；此時不必先建立 `.env`。若目標分頁已有資料、公式或圖表，會先顯示摘要並警告，只有輸入 `y`／`yes` 才覆寫；直接 Enter、拒絕或 EOF 都會取消。`--dry-run` 只讀取與預覽。
 
-```json
-{"custom-question-b": 2, "custom-question-a": 1}
-```
+同一份共用試算表只需初始化一次。**重新初始化會清掉目標分頁的既有成績；考試開始後不要把 setup 當成日常同步指令。** 需要重建時，先停止各教室的同步程序。其他無關分頁不會被重建。
 
-Unknown IDs, duplicate destinations, ambiguous aliases and layout/subtask mismatches fail before writes. Classroom tabs use two header rows with `學號`, numbered question groups/subtasks, and `規則`. Data starts at row 3. `最後成績`/`原始分數` delimit the legacy score range.
+### 4. 將 Drive／Sheet 連結填入 .env，驗證並啟動
 
-Only changed cells upload. Ordinary failures clear previous pass flags. An existing question with no rule results writes 1 for its rule flag, matching the client's no-penalty policy. System-error markers (`SE`, `CTLE`, `ABORTED`, explicit system attribution, or the client's reserved `ruleId: "__engine_error__"`) skip only that student's affected question, preserve existing cells, and print its available cause. For rule-engine failures, prefer the concrete `reason` over the generic message. Other questions continue. Backend students absent from the roster warn and are skipped.
+首次部署先從範本建立 `.env`。以下指令會保留已存在的檔案；若 `.env` 已存在，直接編輯即可。
 
-`INTERVAL=0`, empty or negative runs once; positive values poll. Invalid text warns and falls back to one shot. Ctrl+C stops periodic mode. Backend failures retry with exponential delays starting at 1 second. `BACKOFF_MAX_SECONDS` (default `10`) stops retries when the **next delay exceeds the setting**: wait 1/2/4/8 seconds, then stop if the next failed attempt would require waiting 16 seconds. This is not a total elapsed-time budget. Each backend request separately uses a 10-second connect/read timeout; a continuously progressing download may take longer. Failures print HTTP/provider/transport causes with tokens redacted. Exhaustion stops even periodic mode with exit status 1. Keep one writer per classroom tab.
-
-Configure these independent settings in `.env` (names and descriptions are also in `.env.template`):
-
-| Variable | Default (seconds) | Meaning |
-| --- | --- | --- |
-| `BACKOFF_MAX_SECONDS` | `10` | Backend retry-delay stopping threshold; the next delay above it stops the operation. |
-| `GOOGLE_TIMEOUT_SECONDS` | `30` | Per-request connect/read timeout for Sheets, Drive and OAuth token HTTP calls. |
-
-Both accept positive finite numbers; unset or blank uses the default. Google authentication refresh/retries remain SDK-managed and do not use backend backoff. Google timeout does not cap total login/transfer duration or the user's browser consent time. No process cancellation or replacement HTTP library is introduced.
-
-## Database backups to My Drive
-
-V2's authenticated `GET /admin/backup` returns a binary `.sqlite` snapshot, not
-a textual SQL dump. Backups use Google **user OAuth**; Sheets continue using the
-existing service account. The backend still uses `ADMIN_TOKEN` from `.env`.
-
-One-time setup:
-
-1. In your [Google Cloud project](https://console.cloud.google.com/apis/credentials),
-   enable Google Drive API and configure the OAuth consent audience. Add your
-   account as a test user if the app is in external Testing mode.
-2. Create an OAuth client with application type **Desktop app**, download its
-   JSON, and save it locally as `drive_oauth_client.json`. This is different from
-   the service-account `credentials.json`.
-3. Run the following and sign in with an account able to upload to the folder:
-
-PowerShell:
+PowerShell：
 
 ```powershell
-uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
+if (-not (Test-Path -LiteralPath ".env")) {
+  Copy-Item .env.template .env
+}
 ```
 
-Bash:
+Bash：
 
 ```bash
-uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
+if [ ! -f .env ]; then
+  cp .env.template .env
+fi
 ```
 
-The script stores `drive_token.json` locally for unattended refresh. Both files
-are ignored by Git. Use `--oauth-client`/`--oauth-token` for alternative paths;
-keep any custom secret paths outside version control too. Runtime never starts
-interactive sign-in automatically: missing/revoked credentials cause a clear
-failure. Full Drive scope supports your existing My Drive destination. Google
-external apps in Testing can issue refresh tokens that expire after seven days;
-check consent/publishing settings or reauthorize before the exam.
-[Google OAuth documentation](https://developers.google.com/identity/protocols/oauth2/).
+以 `1222` 教室為例填寫下列設定；連結與後端資訊都換成實際值：
 
-For your selected folder and 300-second interval:
+```dotenv
+# 分數試算表網址與本教室的來源分頁
+SHEET_URL=https://docs.google.com/spreadsheets/d/TARGET_ID/edit
+SHEET_TITLE=1222
+# 分數同步間隔（秒）；0 表示只執行一次
+INTERVAL=60
 
-PowerShell:
+# 本教室 v2 後端網址與管理員 token；資料庫備份也使用管理員 API
+BACKEND_API_URL=http://localhost:3000
+ADMIN_TOKEN=replace-with-the-backend-admin-token
+
+# My Drive 備份資料夾網址、間隔（秒）與備份檔名中的教室名稱
+BACKUP_FOLDER=https://drive.google.com/drive/u/5/folders/FOLDER_ID
+BACKUP_INTERVAL=300
+CLASSROOM=1222
+
+# 後端下次退避等待的停止門檻（秒），不是總執行時間
+BACKOFF_MAX_SECONDS=10
+# Google 每次連線／讀取等待的 timeout（秒）
+GOOGLE_TIMEOUT_SECONDS=30
+```
+
+| 變數 | 簡單說明 |
+| --- | --- |
+| `SHEET_URL` | 第 2 步建立的試算表網址。 |
+| `SHEET_TITLE` | 本教室的來源分頁：`1222`、`1223` 或 `335`；不可指向 `Combined`／`成績登記`。 |
+| `INTERVAL` | 分數同步間隔，正數持續輪詢；0、空白或負數只執行一次。 |
+| `BACKEND_API_URL` | 對應本教室的後端根網址，不加 `/admin/scores` 或 `/admin/backup`。 |
+| `ADMIN_TOKEN` | 後端管理員 token；不是學生 token，也不是 Google token。 |
+| `BACKUP_FOLDER` | 備份資料夾網址或 ID；留空會停用備份。支援含 `/drive/u/5/folders/` 的網址。 |
+| `BACKUP_INTERVAL` | 備份間隔，預設 300 秒；0 只備份一次。與分數同步計時分開。 |
+| `CLASSROOM` | 備份檔名的教室名稱；未填時使用 `SHEET_TITLE`。 |
+| `BACKOFF_MAX_SECONDS` | 後端退避上限，預設 10 秒：等待 1、2、4、8 秒後，下一次若需等 16 秒就報錯停止。 |
+| `GOOGLE_TIMEOUT_SECONDS` | Sheets／Drive／OAuth token 每次 HTTP timeout，預設 30 秒；不限制瀏覽器登入時間。 |
+
+修改 `.env` 後重新啟動程序。`BACKOFF_MAX_SECONDS`、`GOOGLE_TIMEOUT_SECONDS` 須為大於 0 的有限數字；未設定或空白採用預設值。
+
+如果後端 `/admin/scores` 還沒有任何 scoreboard 資料列，目前同步器會回報缺少必要欄位並退出，分數預覽也一樣。請先確認後端已完成必要初始化並有 scoreboard 資料，再執行預覽與啟動；資料庫備份可先單獨驗證。
+
+確認後端正在執行，接著**逐行執行，確認成功後才進到下一行**：先做一次真實備份驗證，再預覽分數同步，最後啟動常駐同步與備份。
+
+PowerShell：
 
 ```powershell
-uv run python main.py --backup-only `
-  --backup-folder "https://drive.google.com/drive/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq" `
-  --backup-interval 300 --classroom 1222
+uv run python main.py --backup-only --backup-interval 0
+uv run python main.py --config "exam-config.json" --dry-run
+uv run python main.py --config "exam-config.json"
 ```
 
-Bash:
+Bash：
 
 ```bash
-uv run python main.py --backup-only \
-  --backup-folder "https://drive.google.com/drive/folders/1DuyLIGc-eQY4lU9WOt3ziJ6tAlcFIuNq" \
-  --backup-interval 300 --classroom 1222
+uv run python main.py --backup-only --backup-interval 0
+uv run python main.py --config "exam-config.json" --dry-run
+uv run python main.py --config "exam-config.json"
 ```
 
-The first backup runs immediately, then the next starts 300 seconds after the
-previous finishes. Add `--dry-run` for one preview without HTTP, credentials or
-uploads. Set `--backup-interval 0` for one real backup to verify sign-in and access.
+第一行會下載資料庫並真的上傳到指定 Drive 資料夾；成功時會印出檔案網址。第二行會讀取後端與 Sheets，但不寫入分數或上傳備份。最後一行會立即同步／備份，之後依 `.env` 的兩個間隔執行。需要停止時按 Ctrl+C；程序必須保持執行，本程式不會自動安裝背景服務。
 
-`--backup-folder` accepts a folder ID, a `/drive/folders/ID` URL, or an account-specific `/drive/u/5/folders/ID` URL. Any nonnegative account index is supported; query strings, fragments and a trailing slash are allowed.
+每個程序只負責一個教室／後端。同一教室只保留一個分數寫入程序。若要同時部署三個教室，分別準備獨立的部署資料夾與 `.env`，共用同一份 `SHEET_URL`，但將 `SHEET_TITLE`、`CLASSROOM`、後端網址及 token 設為各教室對應值；不要重複初始化共用試算表。
 
-To run both jobs in one process, omit `--backup-only` and add `--config` for score
-mapping. Score sync uses `INTERVAL`; backup uses its own timer. Jobs are serialized
-so they cannot overlap. Alternatively run the backup-only command alongside your
-score-sync process. `BACKUP_FOLDER`, `BACKUP_INTERVAL`, and `CLASSROOM` may be set
-in `.env`; backups remain disabled when no folder is configured. Classroom falls
-back to `SHEET_TITLE`. The command must remain running; no desktop automation or
-background service is installed.
+`credentials.json`、`drive_oauth_client.json`、`drive_token.json`、`.env`、名冊與含考題的 config 都應妥善保管，不要提交 Git。範本不含真實金鑰；自訂其他敏感檔名時，也要自行確保不會被提交。
 
-Files are named `classroom_timestamp.sqlite`, for example
-`1222_20261026T143000123456+0800.sqlite`. Timestamps include microseconds and the
-Asia/Taipei offset. Invalid classroom labels are rejected. Downloaded bytes are
-checked for completeness, SQLite header and read-only integrity before uploading.
-The original bytes are preserved. A stable Drive file ID prevents duplicate
-creates during SDK authentication replay; destination, filename, size and MD5 are verified afterward.
-Success prints the file URL. Temporary local files are removed on success or
-failure. If an upload response is lost, verify the assigned file ID without
-blindly resending the upload. An unverified upload fails the job. Backend download
-failures use `BACKOFF_MAX_SECONDS`; Google HTTP calls use `GOOGLE_TIMEOUT_SECONDS`
-without the application's backend retry loop. Existing Drive backups are retained.
-[Google upload/retry documentation](https://developers.google.com/workspace/drive/api/guides/manage-uploads).
+## 同步與計分行為
 
-## Verification
+- 建表與同步使用同一份 `--config`。題號依 `sections[].puzzles[]` 的設定順序排列，子題也保持設定順序；同時支援實際 puzzle ID 與學生端 `Q1...Qn`。未提供 config 時，保留舊版數字題號模式。
+- 可用 `--question-map mapping.json` 覆蓋題目對應，但仍須提供 `--config`。JSON 以實際 ID 對應從 1 起算的工作表題號，例如 `{"custom-question-b": 2, "custom-question-a": 1}`。未知 ID、重複目的地、歧義或 config／分頁結構不符會在寫入前停止。
+- 只上傳有變化的儲存格。一般答錯會清除舊的通過旗標；沒有規則結果的已存在題目採不扣分。後端有、名冊沒有的學生會警告並跳過。
+- `SE`、`CTLE`、`ABORTED`、系統歸因及 `ruleId: "__engine_error__"` 會跳過該學生的該題、保留原資料並印出原因；其他題目與學生繼續同步。規則引擎錯誤優先顯示具體 `reason`。
+- `Combined` 依學號 SUM 三個教室的結果，不依賴列的位置，也不把重複結果壓成 1。大於 1 的值保留並標色，供檢查重複應試或輸入錯誤。
+- `成績登記` 套用 config 的實際子題配分、每題一次的規則倍率與分區上限，最後才做一次四捨五入；不額外限制總分為 100。原始分數不套規則扣分與分區上限。
+- 外觀沿用[參考試算表](https://docs.google.com/spreadsheets/d/12cAocV3Pp6FU-5aDu_zFSh2Gyh3b2x8V2qWdwx0huCY/edit)：白底、黑色分組框線、緊湊欄寬、微軟正黑體分數、紅綠最終成績、隱藏零值文字及灰色原始分數。右側包含及格／不及格統計、十二個分數區間、累計人數，以及 338 × 209 的雙數列折線圖。題目數與配分依 config 調整。
 
-PowerShell:
+## 備份與錯誤處理
+
+後端的管理員 `GET /admin/backup` 回傳二進位 `.sqlite` 快照，不是文字 SQL dump。檔名為 `classroom_timestamp.sqlite`，例如 `1222_20261026T143000123456+0800.sqlite`，使用 Asia/Taipei 時區與微秒時間。首次立即備份，後續在上次完成後等待 `BACKUP_INTERVAL`；同步與備份共用程序時依序執行，不會重疊。
+
+下載後檢查完整性、SQLite 檔頭與唯讀 integrity check，再原樣上傳。Google SDK 更新認證後重送會保留相同 Drive 檔案 ID 與完整內容。若上傳回應遺失或截斷，會依該 ID 核對檔名、目的地、大小與 MD5，不盲目重傳。驗證失敗就報錯；暫存檔會清理，既有雲端備份保留。[Google 上傳說明](https://developers.google.com/workspace/drive/api/guides/manage-uploads)
+
+後端錯誤依 `BACKOFF_MAX_SECONDS` 決定是否繼續退避重試。這不是所有嘗試加總的時間；每次後端請求另外使用 10 秒的連線／讀取 timeout，持續有資料傳輸的下載可以超過 10 秒。Google 認證重試交給 SDK，不套用後端 backoff；`GOOGLE_TIMEOUT_SECONDS` 也不是整段 Google 操作的總時間。
+
+錯誤會顯示 HTTP／provider／transport 的可用原因並遮蔽 token；重試用盡、Google 請求失敗或備份無法驗證時，包含常駐模式在內都會以非零狀態停止。OAuth 過期／撤銷時重新執行第 1 步登入；權限錯誤則分別檢查 Service account 的 Sheet 編輯權與 OAuth 帳號的資料夾上傳權。
+
+若只想單獨執行週期備份，使用下列指令；資料夾與間隔採 `.env` 設定。只需分數同步時，將 `.env` 的 `BACKUP_FOLDER` 留空。
+
+PowerShell：
+
+```powershell
+uv run python main.py --backup-only
+```
+
+Bash：
+
+```bash
+uv run python main.py --backup-only
+```
+
+## 開發驗證
+
+PowerShell：
 
 ```powershell
 uv run python -m coverage run --branch -m pytest tests -q
@@ -190,7 +274,7 @@ uv run python scripts/check_coverage.py coverage.json
 git diff --check
 ```
 
-Bash:
+Bash：
 
 ```bash
 uv run python -m coverage run --branch -m pytest tests -q
@@ -199,6 +283,6 @@ uv run python scripts/check_coverage.py coverage.json
 git diff --check
 ```
 
-Offline tests isolate credentials and HTTP/Sheets boundaries. The exact gate requires 100% statements and branches across all production modules, CLI and gate included, and detects unmeasured modules. The old manual `test_db_parse.py` diagnostic is outside the offline suite. Native Google Sheets checks use a disposable workbook and synthetic identities.
+離線測試隔離憑證與 HTTP／Sheets 邊界。Coverage gate 要求所有 production 模組的陳述與分支皆為 100%，也會檢查是否有漏測模組；舊版手動診斷 `test_db_parse.py` 不納入離線套件。原生 Google Sheets 公式驗證使用可拋棄試算表與合成資料。
 
-See [ADR-001](docs/decisions/001-sheet-setup-from-roster-and-exam-config.md), [plan](tasks/plan.md), and [task ledger](tasks/todo.md).
+設計與驗證紀錄：[ADR-001](docs/decisions/001-sheet-setup-from-roster-and-exam-config.md)、[計畫](tasks/plan.md)、[任務紀錄](tasks/todo.md)。
