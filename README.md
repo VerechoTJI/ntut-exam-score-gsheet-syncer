@@ -177,7 +177,7 @@ fi
 # 分數試算表網址與本教室的來源分頁
 SHEET_URL=https://docs.google.com/spreadsheets/d/TARGET_ID/edit
 SHEET_TITLE=1222
-# 分數同步間隔（秒）；0 表示只執行一次
+# 分數同步間隔（秒），持續執行時填正數
 INTERVAL=60
 
 # 本教室 v2 後端網址與管理員 token；資料庫備份也使用管理員 API
@@ -199,11 +199,11 @@ GOOGLE_TIMEOUT_SECONDS=30
 | --- | --- |
 | `SHEET_URL` | 第 2 步建立的試算表網址。 |
 | `SHEET_TITLE` | 本教室的來源分頁：`1222`、`1223` 或 `335`；不可指向 `Combined`／`成績登記`。 |
-| `INTERVAL` | 分數同步間隔，正數持續輪詢；0、空白或負數只執行一次。 |
+| `INTERVAL` | 分數同步間隔，填正數持續輪詢；以下使用 60 秒。 |
 | `BACKEND_API_URL` | 對應本教室的後端根網址，不加 `/admin/scores` 或 `/admin/backup`。 |
 | `ADMIN_TOKEN` | 後端管理員 token；不是學生 token，也不是 Google token。 |
 | `BACKUP_FOLDER` | 備份資料夾網址或 ID；留空會停用備份。支援含 `/drive/u/5/folders/` 的網址。 |
-| `BACKUP_INTERVAL` | 備份間隔，預設 300 秒；0 只備份一次。與分數同步計時分開。 |
+| `BACKUP_INTERVAL` | 備份間隔，填正數持續備份，預設 300 秒。與分數同步計時分開。 |
 | `CLASSROOM` | 備份檔名的教室名稱；未填時使用 `SHEET_TITLE`。 |
 | `BACKOFF_MAX_SECONDS` | 後端退避上限，預設 10 秒：等待 1、2、4、8 秒後，下一次若需等 16 秒就報錯停止。 |
 | `GOOGLE_TIMEOUT_SECONDS` | Sheets／Drive／OAuth token 每次 HTTP timeout，預設 30 秒；不限制瀏覽器登入時間。 |
@@ -212,12 +212,11 @@ GOOGLE_TIMEOUT_SECONDS=30
 
 如果後端 `/admin/scores` 還沒有任何 scoreboard 資料列，目前同步器會回報缺少必要欄位並退出，分數預覽也一樣。請先確認後端已完成必要初始化並有 scoreboard 資料，再執行預覽與啟動；資料庫備份可先單獨驗證。
 
-確認後端正在執行，接著**逐行執行，確認成功後才進到下一行**：先做一次真實備份驗證，再預覽分數同步，最後啟動常駐同步與備份。
+確認後端正在執行，接著先做 dry-run 預覽，檢查預計更新內容與備份目的地；預覽完成後，再啟動持續同步與備份。以下 `.env` 已設定 `BACKUP_FOLDER`，dry-run 會完成一輪後結束。
 
 PowerShell：
 
 ```powershell
-uv run python main.py --backup-only --backup-interval 0
 uv run python main.py --config "exam-config.json" --dry-run
 uv run python main.py --config "exam-config.json"
 ```
@@ -225,12 +224,11 @@ uv run python main.py --config "exam-config.json"
 Bash：
 
 ```bash
-uv run python main.py --backup-only --backup-interval 0
 uv run python main.py --config "exam-config.json" --dry-run
 uv run python main.py --config "exam-config.json"
 ```
 
-第一行會下載資料庫並真的上傳到指定 Drive 資料夾；成功時會印出檔案網址。第二行會讀取後端與 Sheets，但不寫入分數或上傳備份。最後一行會立即同步／備份，之後依 `.env` 的兩個間隔執行。需要停止時按 Ctrl+C；程序必須保持執行，本程式不會自動安裝背景服務。
+第一行會讀取後端與 Sheets，列出預計分數變更與備份計畫。第二行會立即同步／備份，之後依 `.env` 的兩個正數間隔持續執行。啟動後核對分數及 `Uploaded` 檔案網址，再確認後續週期；實際備份成功用來驗證後端下載及 Drive 上傳權限。需要停止時按 Ctrl+C；程序必須保持執行，本程式不會自動安裝背景服務。
 
 每個程序只負責一個教室／後端。同一教室只保留一個分數寫入程序。若要同時部署三個教室，分別準備獨立的部署資料夾與 `.env`，共用同一份 `SHEET_URL`，但將 `SHEET_TITLE`、`CLASSROOM`、後端網址及 token 設為各教室對應值；不要重複初始化共用試算表。
 
@@ -238,7 +236,7 @@ uv run python main.py --config "exam-config.json"
 
 ## 同步與計分行為
 
-- 建表與同步使用同一份 `--config`。題號依 `sections[].puzzles[]` 的設定順序排列，子題也保持設定順序；同時支援實際 puzzle ID 與學生端 `Q1...Qn`。未提供 config 時，保留舊版數字題號模式。
+- 建表與同步使用同一份 `--config`。題號依 `sections[].puzzles[]` 的設定順序排列，子題也保持設定順序；同時支援實際 puzzle ID 與學生端 `Q1...Qn`。助教的預覽與同步流程統一指定本次 `exam-config.json`。
 - 可用 `--question-map mapping.json` 覆蓋題目對應，但仍須提供 `--config`。JSON 以實際 ID 對應從 1 起算的工作表題號，例如 `{"custom-question-b": 2, "custom-question-a": 1}`。未知 ID、重複目的地、歧義或 config／分頁結構不符會在寫入前停止。
 - 只上傳有變化的儲存格。一般答錯會清除舊的通過旗標；沒有規則結果的已存在題目採不扣分。後端有、名冊沒有的學生會警告並跳過。
 - `SE`、`CTLE`、`ABORTED`、系統歸因及 `ruleId: "__engine_error__"` 會跳過該學生的該題、保留原資料並印出原因；其他題目與學生繼續同步。規則引擎錯誤優先顯示具體 `reason`。
@@ -256,7 +254,7 @@ uv run python main.py --config "exam-config.json"
 
 錯誤會顯示 HTTP／provider／transport 的可用原因並遮蔽 token；重試用盡、Google 請求失敗或備份無法驗證時，包含常駐模式在內都會以非零狀態停止。OAuth 過期／撤銷時重新執行第 1 步登入；權限錯誤則分別檢查 Service account 的 Sheet 編輯權與 OAuth 帳號的資料夾上傳權。
 
-若只想單獨執行週期備份，使用下列指令；資料夾與間隔採 `.env` 設定。只需分數同步時，將 `.env` 的 `BACKUP_FOLDER` 留空。
+若只想單獨執行週期備份，先用 `--backup-only --dry-run` 預覽，再使用下列指令持續執行；資料夾與正數間隔採 `.env` 設定。只需分數同步時，將 `.env` 的 `BACKUP_FOLDER` 留空、`INTERVAL=60`，同步指令保留 `--config "exam-config.json"`。此模式的 dry-run 也會持續輪詢，檢查後按 Ctrl+C，再啟動正式同步。
 
 PowerShell：
 
