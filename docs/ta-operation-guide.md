@@ -8,12 +8,14 @@
 
 ## 1. 依你的目的選擇流程
 
+管理者負責建立 Google 憑證與設定組織存取政策，並交付部署檔案；助教收到檔案後即可進行建表或成績同步。啟用備份時，助教另外登入自己的組織帳號授權 Drive。第 3.1 節供管理者使用，第 3.2 節是助教的檔案接收與登入流程。
+
 | 想做的事 | 閱讀順序 | 完成後得到什麼 |
 | --- | --- | --- |
 | 第一次使用，啟用全部功能 | 第 2～5 節 → 第 6 節 | 一份完成建表的 Sheet，持續同步成績並每 300 秒備份 |
-| 只建立本次考試的試算表 | 第 2 節、3.1、4.1 → 第 5 節 | 五個分頁、名冊、計分公式、統計與圖表 |
+| 只建立本次考試的試算表 | 第 2 節、3.2 第 1 項、4.1 → 第 5 節 | 五個分頁、名冊、計分公式、統計與圖表 |
 | 已經建表，要同步成績及備份 | 核對第 2～5 節的產物 → 第 6 節 | 同步與備份共用一個執行程序 |
-| 只同步成績 | 第 2 節、3.1、4.1 → 第 5 節 → 第 7 節 | 一次或持續更新教室分頁 |
+| 只同步成績 | 第 2 節、3.2 第 1 項、4.1 → 第 5 節 → 第 7 節 | 一次或持續更新教室分頁 |
 | 只備份資料庫 | 第 2 節、3.2、4.2 → 第 8 節 | 一次或持續上傳 `.sqlite` 檔 |
 | 查看成績、處理異常 | 第 9 節、第 12 節 | 確認資料來源與處理方式 |
 | 停止、重新啟動或考後收尾 | 第 10 節 | 完成最後同步與備份，保存交接資料 |
@@ -52,9 +54,9 @@ uv sync --frozen
 
 | 檔案或資訊 | 向誰取得／如何準備 | 使用時機 |
 | --- | --- | --- |
-| `credentials.json` | 第 3.1 節建立，或由管理者安全交付 | 建表、成績同步 |
-| `drive_oauth_client.json` | 第 3.2 節建立 Desktop OAuth client | 首次 Drive 授權或重新授權 |
-| `drive_token.json` | 執行 Drive 授權指令後產生 | 備份期間自動更新認證 |
+| `credentials.json` | 管理者依第 3.1 節建立並安全交付 | 建表、成績同步 |
+| `drive_oauth_client.json` | 管理者依第 3.1 節建立 Desktop OAuth client 並交付 | 首次 Drive 授權或重新授權 |
+| `drive_token.json` | 助教依第 3.2 節登入自己的帳號後在本機產生 | 備份期間自動更新認證 |
 | `roster.xlsx` | 向課程負責人取得 Excel 名冊 | 建表 |
 | `exam-config.json` | 向考試系統管理者取得本次完整考試設定 | 建表、建議同步時也使用 |
 | 後端網址、管理員 token | 向本教室教師機管理者取得 | 成績同步、資料庫備份 |
@@ -79,34 +81,44 @@ ntut-exam-score-gsheet-syncer/
 
 **預留圖 02｜部署資料夾。** 使用示範檔案顯示檔名與副檔名；另外標出 `main.py` 與終端機目前所在位置。
 
-## 3. 準備 Google 憑證
+## 3. Google 設定：管理者準備，助教登入
 
-Google 存取分成兩個身分：Service account 寫入 Sheet；助教授權的 Google 帳號上傳 My Drive 備份。建立憑證的流程可對照 [Google 官方說明](https://developers.google.com/workspace/guides/create-credentials)。
+Google 存取分成兩個身分：Service account 寫入 Sheet；助教授權的 Google 帳號上傳 My Drive 備份。管理者統一提供應用程式與服務帳戶的 JSON；每位負責備份的助教在自己的部署環境登入，產生個人的授權 token。
 
-### 3.1 建立 Sheets 使用的 Service account
+### 3.1 管理者：建立憑證並交付
 
-準備：具有 Google Cloud 專案管理權限的帳號。若管理者已交付 `credentials.json`，直接確認檔案及 `client_email`，再到第 4.1 節設定試算表分享。
+本節由具有 Google Cloud 專案管理權限的人員操作。助教已收到檔案時，可直接前往第 3.2 節。建立憑證的畫面可對照 [Google 官方說明](https://developers.google.com/workspace/guides/create-credentials)。
+
+**Sheets 憑證 `credentials.json`：**
 
 1. 開啟 [Google Cloud Console](https://console.cloud.google.com/)，選擇或建立供考試使用的專案。
 2. 在 API 程式庫啟用 **Google Sheets API** 與 **Google Drive API**。
 3. 到「IAM 與管理員 → 服務帳戶」建立 Service account。
 4. 在該服務帳戶的「金鑰」頁建立 JSON 金鑰並下載。
 5. 將檔案命名為 `credentials.json`，放到部署資料夾。
-6. 用文字編輯器開啟 JSON，記下 `client_email` 的值；第 4.1 節要分享給這個地址。
+6. 記下 JSON 的 `client_email`，連同 `credentials.json` 安全交付給負責部署的助教。第 4.1 節要把試算表分享給這個地址。
 
-完成檢查：部署資料夾有 `credentials.json`，並已記下 Service account email。Sheet 的寫入權限在第 4.1 節授予。
+**Drive 應用程式憑證 `drive_oauth_client.json`：**
+
+1. 在 Google Cloud 專案的 API 程式庫啟用 **Google Drive API**。只使用備份功能時，也要完成此步。
+2. 開啟 Google Auth Platform／OAuth 同意畫面，設定應用程式資訊與 Audience。
+3. 若供學校組織內助教使用，將專案歸屬該 Google Workspace／Cloud Identity 組織，Audience 選 **Internal**。同組織帳號可授權，並由組織管理員確認允許應用程式存取所需 Drive 權限。[Google Audience 說明](https://support.google.com/cloud/answer/15549945?hl=en)
+4. 建立類型為 **Desktop app** 的 OAuth client，下載並命名為 `drive_oauth_client.json`。
+5. 將此檔案安全交付給需要備份的助教，放在各自部署資料夾；同一應用程式的 client JSON 可供多位助教使用，每位助教各自完成第 3.2 節登入。
+
+Internal 的組織內使用者可直接授權，無須逐一加入 Test users。若部署需使用組織外帳號，管理者改依 External 流程處理；External／Testing 須加入 Test users，這類 Drive 授權的 refresh token 通常七天後失效。Internal 依組織政策管理，授權仍可能因撤銷或政策變更而失效。[Google OAuth 狀態說明](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview)、[token 有效期說明](https://developers.google.com/identity/protocols/oauth2#expiration)
+
+完成交付：依啟用功能提供 `credentials.json`、Service account email、`drive_oauth_client.json`，並告知助教應使用的組織帳號範圍。Drive 的個人 `drive_token.json` 由助教登入後產生，保留在對應部署環境。
 
 **預留圖 03｜服務帳戶及金鑰。** 顯示金鑰下載入口與 `client_email` 的位置；示意 email 使用假資料，遮蔽私鑰全文。
 
-### 3.2 建立 Drive OAuth 並完成登入
+### 3.2 助教：接收檔案並登入自己的帳號
 
-準備：本機可開啟瀏覽器，且有之後要存放備份的 Google 帳號。
+準備：已取得管理者提供的 JSON，部署電腦可開啟瀏覽器。助教使用自己的組織帳號，並確認該帳號有備份資料夾的新增檔案權限。
 
-1. 在 Google Cloud 專案的 API 程式庫啟用 **Google Drive API**；接著開啟 Google Auth Platform／OAuth 同意畫面，設定應用程式資訊與 Audience。只使用備份功能時，也要完成此 API 啟用步驟。
-2. 若是 External 且發布狀態為 Testing，把要登入的備份帳號加入 Test users。
-3. 建立類型為 **Desktop app** 的 OAuth client。
-4. 下載 JSON，命名為 `drive_oauth_client.json`，放到部署資料夾。
-5. 執行授權指令。
+1. 建表或同步成績時，將管理者提供的 `credentials.json` 放在部署資料夾，取得對應的 Service account email，再依第 4.1 節設定 Sheet 分享。只用 Sheets 功能時，完成此項即可接續操作。
+2. 使用備份功能時，將管理者提供的 `drive_oauth_client.json` 放在部署資料夾。
+3. 執行以下授權指令。
 
 PowerShell：
 
@@ -120,14 +132,14 @@ Bash：
 uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
 ```
 
-6. 在開啟的瀏覽器選擇備份帳號，核對應用程式與要求的 Drive 權限，完成同意。
-7. 回到終端機，確認出現 `Google Drive authorization saved locally.`，且資料夾產生 `drive_token.json`。
+4. 在開啟的瀏覽器選擇自己的組織帳號，核對管理者提供的應用程式與要求的 Drive 權限，完成同意。Internal 應用程式需選專案所屬組織內的帳號。
+5. 回到終端機，確認出現 `Google Drive authorization saved locally.`，且資料夾產生 `drive_token.json`。
 
-程式之後使用此 token 自動更新認證。此版本使用完整 Drive 存取範圍，請選擇核准供考試備份使用的帳號。External／Testing 的此類 refresh token 通常七天後失效；考前請用第 8.2 節的真實備份確認授權，過期時重新執行本節指令。[Google token 有效期說明](https://developers.google.com/identity/protocols/oauth2#expiration)
+程式之後使用此助教的 token 自動更新認證，並以該帳號上傳備份。此版本使用完整 Drive 存取範圍，請依組織核准的方式授權；遇到組織封鎖提示時，將錯誤交給管理者確認政策。考前請用第 8.2 節的真實備份確認授權；過期、撤銷或更換負責帳號時，重新執行本節指令。
 
 完成檢查：有 `drive_token.json`，並已記下登入的是哪個帳號。實際資料夾上傳權限由第 8.2 節驗證。
 
-**預留圖 04｜OAuth 建立與授權。** 各放一張 Desktop app 類型、測試使用者、瀏覽器帳號選擇畫面及終端機成功訊息；遮蔽 client secret 與 token。
+**預留圖 04｜管理者設定與助教登入。** 分成兩組：管理者的 Internal Audience／Desktop app 畫面，以及助教的組織帳號選擇／終端機成功訊息；遮蔽 client secret 與 token。
 
 ## 4. 建立成績與備份目的地
 
@@ -168,7 +180,7 @@ https://drive.google.com/drive/u/5/folders/FOLDER_ID
 
 ### 5.1 準備與核對檔案
 
-先完成第 2 節、3.1 節與 4.1 節，再準備：
+管理者先完成第 3.1 節的 Sheets 憑證準備；助教完成第 2 節、3.2 節第 1 項與 4.1 節，再準備：
 
 - `roster.xlsx`：選定分頁的第一列含 `班級`、`姓名`、`學號`，欄位順序可不同。每位學生需有唯一且完整的學號；核對前導零是否已在原始 Excel 中正確保存。
 - `exam-config.json`：本次考試完整設定，包含 `sections[].puzzles[]`、子題配分、規則倍率及分區上限。向考試管理者取得與本次後端／學生端對應的版本。
@@ -370,7 +382,7 @@ uv run python main.py --config "exam-config.json"
 
 ## 7. 功能三：只同步成績
 
-前置條件：完成第 2 節、3.1 節、4.1 節及第 5 節建表，取得後端網址與管理員 token。已有合規試算表時先核對名冊、前兩列表頭及本次題目配置。
+前置條件：管理者已依第 3.1 節交付 Sheets 憑證；助教完成第 2 節、3.2 節第 1 項、4.1 節及第 5 節建表，取得後端網址與管理員 token。已有合規試算表時先核對名冊、前兩列表頭及本次題目配置。
 
 ### 7.1 設定一次同步
 

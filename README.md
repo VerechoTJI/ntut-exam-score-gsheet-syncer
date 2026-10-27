@@ -26,26 +26,31 @@ Bash：
 uv sync --frozen
 ```
 
-本程式使用兩種不同身分，JSON 檔不能互換：
+本程式使用兩種不同身分。管理者統一建立及交付下列兩份 JSON，助教接收後登入自己的組織帳號完成 Drive 授權：
 
 | 用途 | Google 身分 | 檔案 |
 | --- | --- | --- |
 | 建立工作表內容、同步分數 | Service account | `credentials.json` |
 | 上傳備份到 My Drive | 你的 Google 帳號，透過 Desktop OAuth 登入 | `drive_oauth_client.json`，登入後另產生 `drive_token.json` |
 
-**建立 Service account 憑證：**
+**管理者事先準備：Service account 憑證。**
 
 1. 在 [Google Cloud Console](https://console.cloud.google.com/) 選擇或建立專案，啟用 **Google Sheets API** 與 **Google Drive API**。
 2. 到「IAM 與管理員 → 服務帳戶」建立 Service account，再到該帳戶的「金鑰」建立並下載 JSON 金鑰。
 3. 將金鑰命名為 `credentials.json`，放在本專案資料夾。
 4. 記下 JSON 裡的 `client_email`，下一步要把試算表分享給這個 email。寫入權限由試算表的分享設定授予，不需要為此賦予整個 Cloud 專案的 Editor 角色。
 
-**建立 Drive OAuth 憑證並登入：**
+**管理者事先準備：Drive OAuth 應用程式憑證。**
 
-1. 在同一個 Cloud 專案設定 Google Auth Platform／OAuth 同意畫面的應用程式資訊與 Audience。
-2. 若使用 External 且發布狀態為 Testing，將要備份的 Google 帳號加入 Test users。
+1. 確認 Google Drive API 已啟用，在同一個 Cloud 專案設定 Google Auth Platform／OAuth 同意畫面的應用程式資訊與 Audience。
+2. 供組織內助教使用時，專案須歸屬該 Google Workspace／Cloud Identity 組織，Audience 選 **Internal**，並由組織管理員確認允許所需 Drive 存取。同組織帳號可授權，無須逐一加入 Test users。若使用 External 且發布狀態為 Testing，則將要備份的帳號加入 Test users。[Google Audience 說明](https://support.google.com/cloud/answer/15549945?hl=en)
 3. 到 Clients／憑證建立 **Desktop app** OAuth client，下載 JSON，命名為 `drive_oauth_client.json`，放在本專案資料夾。
-4. 執行以下指令，在開啟的瀏覽器登入之後要上傳備份的帳號，並完成授權。
+4. 將 `credentials.json`、其 `client_email` 與 `drive_oauth_client.json` 安全交付給助教。OAuth client JSON 可供多位助教使用；個人授權 token 由每位助教自行登入產生。
+
+**助教操作：接收檔案並登入。**
+
+1. 將管理者提供的 `credentials.json`、`drive_oauth_client.json` 放在部署資料夾。
+2. 執行以下指令，在開啟的瀏覽器登入自己的組織帳號，並完成授權；確認該帳號具有備份資料夾的新增檔案權限。Internal 應用程式需選專案所屬組織內的帳號。
 
 PowerShell：
 
