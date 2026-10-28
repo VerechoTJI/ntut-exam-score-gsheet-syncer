@@ -17,7 +17,3 @@ client_secret*.json
 
 *.xlsx
 exam-config.json
-
-# Local reference screenshots excluded from published documentation
-/docs/image-1.png
-/docs/image-2.png

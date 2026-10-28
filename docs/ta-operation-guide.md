@@ -149,6 +149,8 @@ uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
 
 本次考試目錄及其中的 Google 試算表繼承共享目錄的編輯權限。[Google 資料夾權限繼承說明](https://support.google.com/drive/answer/7166529?hl=en)
 
+![共享目錄中已遮蔽帳號資訊的權限示例](image-1.png)
+
 ### 4.2 取得 Google Drive 備份資料夾連結
 
 開啟既有的本次考試備份目錄，複製網址。
@@ -176,13 +178,7 @@ https://drive.google.com/drive/u/0/folders/FOLDER_ID
 - `exam-config.json`：由助教提供本次考試完整設定，包含 `sections[].puzzles[]`、子題配分、規則倍率及分區上限，並確認與本次後端／學生端使用的版本一致。
 - 名冊分頁名稱：以下示範 `工作表1`，執行前換成 Microsoft Excel 下方顯示的名稱。
 
-名冊示例（以下為虛構資料）：
-
-| 班級 | 姓名 | 學號 |
-| --- | --- | --- |
-| 示範班級 | 示範學生甲 | TEST001 |
-| 示範班級 | 示範學生乙 | TEST002 |
-| 示範班級 | 示範學生丙 | TEST003 |
+![使用示範姓名與學號的 Microsoft Excel 名冊](image-2.png)
 
 ### 5.2 預覽目的地與現有內容
 
