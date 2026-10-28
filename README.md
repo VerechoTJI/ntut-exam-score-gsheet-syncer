@@ -8,6 +8,8 @@
 
 依序完成：**準備憑證 → 建立 Google Sheet 與備份資料夾 → 放入名冊／設定並初始化 → 填寫 `.env`、驗證及啟動**。
 
+考前可完成憑證、Google 授權、建表與 `.env` 填寫，這些步驟只需本機檔案及 Google 連線。考試時部署啟動後端後，再預覽成績同步、持續同步並驗證實際備份。
+
 先將本專案放到部署機，安裝 Python 3.13+ 與 [uv](https://docs.astral.sh/uv/getting-started/installation/)，並在 **本 README 所在資料夾**開啟 shell。下列檔案路徑都相對於這個資料夾；每個指令都有 PowerShell 與 Bash 版本。
 
 ### 1. 準備 credentials 與 Drive OAuth
@@ -37,7 +39,7 @@ uv sync --frozen
 
 1. 向憑證保管人取得既有 Service account 的可用金鑰，保存為本專案資料夾中的 `credentials.json`。
 2. 核對 JSON 裡的 `client_email`，下一步要把試算表分享給這個 email 並授予編輯權。
-3. 更新檔案前先停止同步程序，替換後先 dry-run 驗證，確認成功再恢復持續同步。
+3. 更新檔案前先停止同步程序。考前替換後使用建表 dry-run 驗證 Google 存取；考試時部署則先做分數同步 dry-run，確認成功再恢復持續同步。
 
 首次建立 Service account 的流程移至[助教手冊附錄 A](docs/ta-operation-guide.md#appendix-a)，日常部署使用既有憑證。
 
@@ -67,7 +69,7 @@ uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
 
 成功後會在本機產生 `drive_token.json`，讓之後的備份自動更新 token；排程執行期間不會自行跳出瀏覽器要求登入。預設使用完整 Drive scope，以支援既有 My Drive 資料夾。若要改檔案位置，可指定 `--oauth-client`／`--oauth-token`，之後執行時也須使用相同路徑。
 
-Google External app 在 Testing 狀態下，這類授權的 refresh token 通常會在七天後失效；考前應確認授權仍有效，必要時重新執行登入指令。[Google OAuth 說明](https://developers.google.com/identity/protocols/oauth2#expiration)
+Google External app 在 Testing 狀態下，這類授權的 refresh token 通常會在七天後失效；可在考前重新執行登入指令取得授權，考試時部署再確認實際備份上傳成功。[Google OAuth 說明](https://developers.google.com/identity/protocols/oauth2#expiration)
 
 ### 2. 建立新的 Google Sheet 並設定存取權
 
@@ -154,6 +156,10 @@ uv run python main.py --setup-sheet \
 
 ### 4. 將 Drive／Sheet 連結填入 .env，驗證並啟動
 
+#### 考前：填寫 .env
+
+本階段準備設定檔，可先取得並填入後端網址與管理員 token。
+
 首次部署先從範本建立 `.env`。以下指令會保留已存在的檔案；若 `.env` 已存在，直接編輯即可。
 
 PowerShell：
@@ -211,7 +217,9 @@ GOOGLE_TIMEOUT_SECONDS=30
 
 修改 `.env` 後重新啟動程序。`BACKOFF_MAX_SECONDS`、`GOOGLE_TIMEOUT_SECONDS` 須為大於 0 的有限數字；未設定或空白採用預設值。
 
-如果後端 `/admin/scores` 還沒有任何 scoreboard 資料列，目前同步器會回報缺少必要欄位並退出，分數預覽也一樣。請先確認後端已完成必要初始化並有 scoreboard 資料，再執行預覽與啟動；資料庫備份可先單獨驗證。
+#### 考試時部署：連線後端、預覽並持續執行
+
+如果後端 `/admin/scores` 還沒有任何 scoreboard 資料列，目前同步器會回報缺少必要欄位並退出，分數預覽也一樣。請先確認後端已完成必要初始化並有 scoreboard 資料，再執行預覽與啟動；資料庫備份可先單獨部署並驗證。
 
 確認後端正在執行，接著先做 dry-run 預覽，檢查預計更新內容與備份目的地；預覽完成後，再啟動持續同步與備份。以下 `.env` 已設定 `BACKUP_FOLDER`，dry-run 會完成一輪後結束。
 
