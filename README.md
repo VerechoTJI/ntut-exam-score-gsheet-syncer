@@ -26,19 +26,20 @@ Bash：
 uv sync --frozen
 ```
 
-本程式使用兩種不同身分。管理者統一建立及交付下列兩份 JSON，助教接收後登入自己的組織帳號完成 Drive 授權：
+本程式使用兩種不同身分。Sheets 沿用已建立的 Service account，維護其 `credentials.json`；Drive OAuth client JSON 由負責設定的人員交付，助教接收後登入自己的組織帳號完成 Drive 授權：
 
 | 用途 | Google 身分 | 檔案 |
 | --- | --- | --- |
 | 建立工作表內容、同步分數 | Service account | `credentials.json` |
 | 上傳備份到 My Drive | 你的 Google 帳號，透過 Desktop OAuth 登入 | `drive_oauth_client.json`，登入後另產生 `drive_token.json` |
 
-**管理者事先準備：Service account 憑證。**
+**維護既有 Service account 憑證。**
 
-1. 在 [Google Cloud Console](https://console.cloud.google.com/) 選擇或建立專案，啟用 **Google Sheets API** 與 **Google Drive API**。
-2. 到「IAM 與管理員 → 服務帳戶」建立 Service account，再到該帳戶的「金鑰」建立並下載 JSON 金鑰。
-3. 將金鑰命名為 `credentials.json`，放在本專案資料夾。
-4. 記下 JSON 裡的 `client_email`，下一步要把試算表分享給這個 email。寫入權限由試算表的分享設定授予，不需要為此賦予整個 Cloud 專案的 Editor 角色。
+1. 向憑證保管人取得既有 Service account 的可用金鑰，保存為本專案資料夾中的 `credentials.json`。
+2. 核對 JSON 裡的 `client_email`，下一步要把試算表分享給這個 email 並授予編輯權。
+3. 更新檔案前先停止同步程序，替換後先 dry-run 驗證，確認成功再恢復持續同步。
+
+首次建立 Service account 的流程移至[助教手冊附錄 A](docs/ta-operation-guide.md#appendix-a)，日常部署使用既有憑證。
 
 **管理者事先準備：Drive OAuth 應用程式憑證。**
 

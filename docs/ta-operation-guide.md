@@ -4,24 +4,24 @@
 
 本手冊供負責考試成績與備份的助教使用，適用於 `ntut-exam-score-gsheet-syncer`。你可以用它建立成績試算表、同步各教室的評測結果，以及把教師機的 SQLite 資料庫備份到 Google Drive。
 
-## 1. 依操作時機選擇流程
+## 1. 流程與目錄
 
-### 1.1 考前準備
+### 1.1 考前準備流程
 
-| 想做的事 | 閱讀順序 | 完成後得到什麼 |
+| 操作 | 相關段落 | 完成後得到什麼 |
 | --- | --- | --- |
 | 準備電腦、工具及本次考試檔案 | 第 2 節 | 可執行程式的部署資料夾、名冊與 exam config |
-| 準備 Google 憑證並完成登入 | 尚未建立憑證時先看第 3.1 節；已取得檔案則看第 3.2 節 | Sheets 憑證，以及備份需要的個人 Drive 授權 |
+| 確認既有 credentials 並完成登入 | 第 3.1 節確認憑證；第 3.2 節接收檔案與登入 | 可使用的 Sheets 憑證，以及備份需要的個人 Drive 授權 |
 | 建立 Sheet 與備份資料夾 | 第 4 節 | 已設定存取權的試算表與備份目的地 |
 | 從名冊與設定建立完整試算表 | 第 5 節 | 五個分頁、名冊、計分公式、統計與圖表 |
 | 填寫本教室的連線與間隔設定 | 第 6.1 節；只備份時看第 8.1 節 | 已填好本教室資訊的 `.env` |
 | 規劃多個教室或準備下一場考試 | 第 11 節 | 各教室的獨立部署資料夾與對應設定 |
 
-### 1.2 考試時部署
+### 1.2 考試時部署流程
 
 完成所需的考前準備後，依本教室要使用的功能選擇流程，先 dry-run 預覽，再持續執行。
 
-| 想做的事 | 閱讀順序 | 完成後得到什麼 |
+| 操作 | 相關段落 | 完成後得到什麼 |
 | --- | --- | --- |
 | 同步成績並定期備份 | 第 6.2～6.3 節 | 同一程序持續同步成績並每 300 秒備份 |
 | 只同步成績 | 第 7 節 | 持續更新本教室分頁，依本次 exam config 對應題目 |
@@ -62,7 +62,7 @@ uv sync --frozen
 
 | 檔案或資訊 | 向誰取得／如何準備 | 使用時機 |
 | --- | --- | --- |
-| `credentials.json` | 管理者依第 3.1 節建立並安全交付 | 建表、成績同步 |
+| `credentials.json` | 向負責保管既有 Service account 憑證的人員取得，依第 3.1 節維護 | 建表、成績同步 |
 | `drive_oauth_client.json` | 管理者依第 3.1 節建立 Desktop OAuth client 並交付 | 首次 Drive 授權或重新授權 |
 | `drive_token.json` | 助教依第 3.2 節登入自己的帳號後在本機產生 | 備份期間自動更新認證 |
 | `roster.xlsx` | 向課程負責人取得 Excel 名冊 | 建表 |
@@ -93,18 +93,18 @@ ntut-exam-score-gsheet-syncer/
 
 Google 存取分成兩個身分：Service account 寫入 Sheet；助教授權的 Google 帳號上傳 My Drive 備份。管理者統一提供應用程式與服務帳戶的 JSON；每位負責備份的助教在自己的部署環境登入，產生個人的授權 token。
 
-### 3.1 管理者：建立憑證並交付
+### 3.1 維護既有 credentials 與準備 Drive OAuth
 
-本節由具有 Google Cloud 專案管理權限的人員操作。助教已收到檔案時，可直接前往第 3.2 節。建立憑證的畫面可對照 [Google 官方說明](https://developers.google.com/workspace/guides/create-credentials)。
+本專案的 Service account 已建立。日常部署沿用既有帳戶的 `credentials.json`，由負責保管該憑證的人員提供可用版本；已取得檔案的助教確認下列事項後，接續第 3.2 節操作。
 
 **Sheets 憑證 `credentials.json`：**
 
-1. 開啟 [Google Cloud Console](https://console.cloud.google.com/)，選擇或建立供考試使用的專案。
-2. 在 API 程式庫啟用 **Google Sheets API** 與 **Google Drive API**。
-3. 到「IAM 與管理員 → 服務帳戶」建立 Service account。
-4. 在該服務帳戶的「金鑰」頁建立 JSON 金鑰並下載。
-5. 將檔案命名為 `credentials.json`，放到部署資料夾。
-6. 記下 JSON 的 `client_email`，連同 `credentials.json` 安全交付給負責部署的助教。第 4.1 節要把試算表分享給這個地址。
+1. 將收到的既有金鑰檔保存為部署資料夾中的 `credentials.json`，限制檔案存取並透過受控管道交接。
+2. 核對 JSON 的 `client_email` 是否為本專案既有 Service account，保留此 email 供第 4.1 節設定 Sheet 編輯權限。
+3. 完成第 4.1 節的 Sheet 分享後，考前執行建表或分數同步的 dry-run，確認憑證與試算表存取正常。
+4. 需要更新金鑰檔時，先停止使用該檔案的同步程序，向憑證保管人取得更新版本，替換 `credentials.json`，重新 dry-run 通過後再恢復持續同步。核對更新後的 `client_email`；若帳戶有變更，先調整 Sheet 分享對象。
+
+完成檢查：部署資料夾有可用的 `credentials.json`，Service account email 正確，且可讀取目標 Sheet。首次建立或重建 Service account 的背景流程收在[附錄 A](#appendix-a)。
 
 **Drive 應用程式憑證 `drive_oauth_client.json`：**
 
@@ -118,7 +118,7 @@ Internal 的組織內使用者可直接授權，無須逐一加入 Test users。
 
 完成交付：依啟用功能提供 `credentials.json`、Service account email、`drive_oauth_client.json`，並告知助教應使用的組織帳號範圍。Drive 的個人 `drive_token.json` 由助教登入後產生，保留在對應部署環境。
 
-**預留圖 03｜服務帳戶及金鑰。** 顯示金鑰下載入口與 `client_email` 的位置；示意 email 使用假資料，遮蔽私鑰全文。
+**預留圖 03｜既有 credentials 核對。** 顯示部署資料夾中的檔名與 `client_email` 的位置；示意 email 使用假資料，遮蔽私鑰全文。
 
 ### 3.2 助教：接收檔案並登入自己的帳號
 
@@ -588,3 +588,17 @@ uv run python main.py --backup-only
 後續依圖 01～12 補圖，每張圖搭配「操作位置、要核對的值、成功畫面」圖說。教學圖統一使用合成名冊、示範題目與測試 Sheet；截圖前移除真實學號、成績、私鑰及 token。
 
 首次交付前，由另一位助教使用測試環境，依選用功能完整走一次，記錄實際 Google 畫面名稱差異、操作卡點與驗收結果，再整理成圖文版。本文指令依目前 CLI 與 [README](../README.md) 整理；Google 實際授權與寫入結果需由操作當下的驗收確認。
+
+<a id="appendix-a"></a>
+
+## 附錄 A：首次建立 Service account
+
+本附錄供具有 Google Cloud 專案管理權限的人員，在首次建立或另行規劃重建服務帳戶時參考。日常部署依第 3.1 節維護既有 `credentials.json` 即可。建立憑證的畫面可對照 [Google 官方說明](https://developers.google.com/workspace/guides/create-credentials)。
+
+1. 開啟 [Google Cloud Console](https://console.cloud.google.com/)，選擇或建立供考試使用的專案。
+2. 在 API 程式庫啟用 **Google Sheets API** 與 **Google Drive API**。
+3. 到「IAM 與管理員 → 服務帳戶」建立 Service account。
+4. 在該服務帳戶的「金鑰」頁建立 JSON 金鑰並下載。
+5. 將檔案命名為 `credentials.json`，放到部署資料夾。
+6. 記下 JSON 的 `client_email`，連同 `credentials.json` 安全交付給負責部署的助教。
+7. 依第 4.1 節把目標 Sheet 分享給此 email，授予編輯者，再執行建表或同步的 dry-run 驗證。
