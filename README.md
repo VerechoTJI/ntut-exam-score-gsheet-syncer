@@ -6,7 +6,7 @@
 
 ## 部署流程
 
-依序完成：**準備憑證 → 建立 Google 試算表與備份資料夾 → 放入名冊／設定並初始化 → 填寫 `.env`、驗證及啟動**。
+依序完成：**準備憑證 → 確認共享根目錄權限與準備連結 → 放入名冊／設定並初始化 → 填寫 `.env`、驗證及啟動**。
 
 考前可完成憑證、Google 授權、建表與 `.env` 填寫，這些步驟只需本機檔案及 Google 連線。考試時部署啟動後端後，再預覽成績同步、持續同步並驗證實際備份。
 
@@ -40,20 +40,10 @@ uv sync --frozen
 | 建立工作表內容、同步分數 | Google 服務帳戶 | `credentials.json` |
 | 上傳備份到 Google Drive 的「我的雲端硬碟」 | 你的 Google 帳號，完成 Google 帳號授權後登入 | `drive_oauth_client.json`，登入後另產生 `drive_token.json` |
 
-**維護既有 Google 服務帳戶憑證。**
-
-1. 確認 `credentials.json` 在本專案資料夾。
-2. 核對憑證檔案裡的 `client_email`，下一步要把試算表分享給這個電子郵件地址並授予編輯權。
-3. 更新檔案前先停止同步程序。考前替換後使用建表預覽模式驗證 Google 存取；考試時部署則先做分數同步預覽模式，確認成功再恢復持續同步。
-
-首次建立 Google 服務帳戶的流程移至[助教手冊附錄 A](docs/ta-operation-guide.md#appendix-a)，日常部署使用既有憑證。
-
-首次建立 Google Drive 登入授權應用程式憑證的流程，請見[助教手冊附錄 B](docs/ta-operation-guide.md#appendix-b)。助教沿用維護考試系統的同學提供的 `drive_oauth_client.json`。
-
 **助教操作：確認檔案並登入。**
 
 1. 確認 `credentials.json` 與 `drive_oauth_client.json` 在本專案資料夾。
-2. 執行以下指令，在開啟的瀏覽器登入自己的學校 Google 帳號，並完成授權；確認該帳號具有備份資料夾的新增檔案權限。Internal 應用程式需選專案所屬組織內的帳號。
+2. 執行以下指令，在開啟的瀏覽器登入具有共享根目錄編輯權的學校 Google 帳號，並完成授權。Internal 應用程式需選專案所屬組織內的帳號。
 
 PowerShell：
 
@@ -69,17 +59,16 @@ uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
 
 成功後會在本機產生 `drive_token.json`，讓之後的備份自動更新權杖；排程執行期間不會自行跳出瀏覽器要求登入。預設使用完整 Google Drive 存取範圍，以支援既有 Google Drive 的「我的雲端硬碟」資料夾。若要改檔案位置，可指定 `--oauth-client`／`--oauth-token`，之後執行時也須使用相同路徑。
 
-### 2. 建立新的 Google 試算表並設定存取權
+### 2. 確認共享根目錄權限並準備連結
 
-1. 使用助教的學校 Google 帳號建立一份空白 Google 試算表，取好名稱。
-2. 開啟「共用」，將「一般存取權」設成 **知道連結的任何人 → 檢視者**。這讓持有連結的人可以查看；**不要把一般存取權設為編輯者**。
-3. 在同一個共用視窗，另外加入 `credentials.json` 的 **`client_email`**，設為 **編輯者**。只有公開檢視權限，仍不足以讓程式寫入。
-4. 複製試算表網址。下一步初始化時先放進 `--sheet-url`，第 4 步再寫入 `.env`。
-5. 在 Google Drive 的「我的雲端硬碟」建立或選定備份資料夾，例如 `db-backup`，確認第 1 步完成 Google 授權的帳號有新增檔案的權限，並複製資料夾網址。
+本次考試目錄與備份目錄都已備妥。
 
-「知道連結的任何人」會讓持有連結的人看到名冊、學號與成績。若不需要公開檢視，可以改成「受限制」並只分享給助教與維護考試系統的同學；只要 Google 服務帳戶有編輯權限，程式仍可運作。[Google 分享權限說明](https://support.google.com/drive/answer/2494822)
+1. 開啟本課程的 Google Drive 共享根目錄，點選「共用」，確認 `credentials.json` 的 `client_email` 對應的 Google 服務帳戶為 **編輯者**。
+2. 開啟既有的本次考試目錄，在其中建立 Google 試算表。
+3. 將試算表的一般存取權設為 **知道連結的任何人 → 檢視者**，複製試算表網址。
+4. 開啟既有的本次考試備份目錄，複製網址。
 
-**備份資料夾維持受限存取即可，不需要公開。** Google 服務帳戶負責 Google 試算表，完成 Google 授權的帳號負責 Google Drive 備份，請分別確認兩者的權限。[Google 服務帳戶存取說明](https://developers.google.com/workspace/guides/create-credentials#service-account)
+本次考試目錄及其中檔案繼承共享根目錄的編輯權限。[Google 資料夾權限繼承說明](https://support.google.com/drive/answer/7166529?hl=en)
 
 ### 3. 放入 Microsoft Excel 名冊與考試設定檔，執行初始化指令
 
@@ -259,7 +248,7 @@ uv run python main.py --config "exam-config.json"
 
 後端錯誤依 `BACKOFF_MAX_SECONDS` 決定是否繼續退避重試。這不是所有嘗試加總的時間；每次後端請求另外使用 10 秒的連線／讀取逾時時間，持續有資料傳輸的下載可以超過 10 秒。Google 認證重試交給 Google 官方軟體開發套件，不套用後端退避重試；`GOOGLE_TIMEOUT_SECONDS` 也不是整段 Google 操作的總時間。
 
-錯誤會顯示網路請求／服務端／傳輸層的可用原因並遮蔽權杖；重試用盡、Google 請求失敗或備份無法驗證時，包含常駐模式在內都會以非零狀態停止。Google 帳號授權過期／撤銷時重新執行第 1 步登入；權限錯誤則分別檢查 Google 服務帳戶的 Google 試算表編輯權與完成 Google 授權的帳號的資料夾上傳權。
+錯誤會顯示網路請求／服務端／傳輸層的可用原因並遮蔽權杖；重試用盡、Google 請求失敗或備份無法驗證時，包含常駐模式在內都會以非零狀態停止。Google 帳號授權過期／撤銷時重新執行第 1 步登入；權限錯誤時確認檔案位於共享根目錄內，再由維護考試系統的同學處理。
 
 若只想單獨執行週期備份，先用 `--backup-only --dry-run` 預覽，再使用下列指令持續執行；資料夾與正數間隔採 `.env` 設定。只需分數同步時，將 `.env` 的 `BACKUP_FOLDER` 留空、`INTERVAL=60`，同步指令保留 `--config "exam-config.json"`。此模式的預覽也會持續輪詢，檢查後按 Ctrl+C，再啟動正式同步。
 
@@ -298,3 +287,5 @@ git diff --check
 離線測試隔離憑證與網路／Google 試算表邊界。測試覆蓋率檢查要求所有正式程式模組的陳述與分支皆為 100%，也會檢查是否有漏測模組；舊版手動診斷 `test_db_parse.py` 不納入離線套件。原生 Google 試算表公式驗證使用可拋棄試算表與合成資料。
 
 設計與驗證紀錄：[架構決策紀錄](docs/decisions/001-sheet-setup-from-roster-and-exam-config.md)、[計畫](tasks/plan.md)、[任務紀錄](tasks/todo.md)。
+
+憑證相關維護流程：[首次建立 Google 服務帳戶](docs/ta-operation-guide.md#appendix-a)、[首次建立 Google Drive 登入授權應用程式憑證](docs/ta-operation-guide.md#appendix-b)、[維護與更新憑證](docs/ta-operation-guide.md#appendix-c)。

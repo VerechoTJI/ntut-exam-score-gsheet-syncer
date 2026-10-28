@@ -13,8 +13,8 @@
 | 操作 | 相關段落 | 完成後得到什麼 |
 | --- | --- | --- |
 | 準備電腦、工具及本次考試檔案 | 第 2 節 | 可執行程式的部署資料夾、名冊與完整考試設定檔 |
-| 確認既有憑證檔案並完成登入 | 第 3.1 節確認憑證；第 3.2 節登入 | 可使用的 Google 試算表憑證，以及備份需要的個人 Google Drive 授權 |
-| 建立 Google 試算表與備份資料夾 | 第 4 節 | 已設定存取權的試算表與備份目的地 |
+| 確認檔案並完成登入 | 第 3.1 節確認檔案；第 3.2 節登入 | 已準備的檔案，以及備份需要的個人 Google Drive 授權 |
+| 確認共享根目錄權限並準備連結 | 第 4 節 | Google 試算表與既有備份資料夾的連結 |
 | 從名冊與設定建立完整試算表 | 第 5 節 | 五個分頁、名冊、計分公式、統計與圖表 |
 | 填寫本教室的連線與間隔設定 | 第 6.1 節；只備份時看第 8.1 節 | 已填好本教室資訊的 `.env` |
 | 規劃多個教室或準備下一場考試 | 第 11 節 | 各教室的獨立部署資料夾與對應設定 |
@@ -66,13 +66,14 @@ uv sync --frozen
 
 | 檔案或資訊 | 向誰取得／如何準備 | 使用時機 |
 | --- | --- | --- |
-| `credentials.json` | 向維護考試系統的同學取得，依第 3.1 節維護 | 建表、成績同步 |
+| `credentials.json` | 由維護考試系統的同學提供 | 建表、成績同步 |
 | `drive_oauth_client.json` | 由維護考試系統的同學提供；建立流程見附錄 B | 首次 Google Drive 授權或重新授權 |
 | `drive_token.json` | 助教依第 3.2 節登入自己的帳號後在本機產生 | 備份期間自動更新認證 |
 | `roster.xlsx` | 由助教提供本次考試的 Microsoft Excel 名冊 | 建表 |
 | `exam-config.json` | 由助教提供本次完整考試設定 | 建表、成績同步 |
 | 後端網址、管理權杖 | 向維護考試系統的同學取得 | 成績同步、資料庫備份 |
-| Google 試算表網址、Google Drive 資料夾網址 | 第 4 節建立 | 指定成績與備份目的地 |
+| Google Drive 共享根目錄網址 | 由維護考試系統的同學提供 | 確認 Google 服務帳戶編輯權限 |
+| Google 試算表網址、Google Drive 備份資料夾網址 | 第 4 節取得 | 指定成績與備份目的地 |
 
 全部功能的部署資料夾會像這樣：
 
@@ -93,34 +94,19 @@ ntut-exam-score-gsheet-syncer/
 
 **預留圖 02｜部署資料夾。** 使用示範檔案顯示檔名與副檔名；另外標出 `main.py` 與終端機目前所在位置。
 
-## 3. Google 服務設定：維護考試系統的同學準備，助教登入
+## 3. 確認檔案並登入
 
-助教向維護考試系統的同學取得 `credentials.json` 與 `drive_oauth_client.json`。`credentials.json` 讓程式讀寫成績試算表；使用備份功能時，助教再用自己的學校 Google 帳號登入 Google Drive，程式會產生 `drive_token.json`，用於後續備份。
+### 3.1 確認檔案
 
-### 3.1 維護既有憑證檔案
+- 建表或同步成績：確認 `credentials.json` 與 `exam-config.json` 在部署資料夾。
+- 建表：確認 `roster.xlsx` 在部署資料夾。
+- 備份：確認 `drive_oauth_client.json` 在部署資料夾。
 
-本專案的 Google 服務帳戶已建立。日常部署沿用既有帳戶的 `credentials.json`，由維護考試系統的同學提供可用版本；已取得檔案的助教確認下列事項後，接續第 3.2 節操作。
+**預留圖 03｜檔案確認。** 顯示部署資料夾中的檔案名稱。
 
-**Google 試算表憑證 `credentials.json`：**
+### 3.2 登入 Google Drive
 
-1. 確認 `credentials.json` 在部署資料夾。
-2. 核對憑證檔案的 `client_email` 是否為本專案既有 Google 服務帳戶，保留此電子郵件地址供第 4.1 節設定 Google 試算表編輯權限。
-3. 完成第 4.1 節的 Google 試算表分享後，考前依第 5.2 節執行建表預覽模式，確認憑證與試算表存取正常。
-4. 需要更新金鑰檔時，先停止使用該檔案的同步程序，向維護考試系統的同學取得更新版本，替換 `credentials.json`。核對更新後的 `client_email`；若帳戶有變更，先調整 Google 試算表分享對象。考前可用第 5.2 節建表預覽模式檢查存取；考試時部署則依第 6.2 或 7.2 節完成分數預覽，再恢復持續同步。
-
-完成檢查：部署資料夾有可用的 `credentials.json`，Google 服務帳戶電子郵件地址正確，且可讀取目標 Google 試算表。首次建立或重建 Google 服務帳戶的背景流程收在[附錄 A](#appendix-a)。
-
-Google Drive 登入使用的 `drive_oauth_client.json` 由維護考試系統的同學提供。首次建立流程見[附錄 B](#appendix-b)。
-
-**預留圖 03｜既有憑證檔案核對。** 顯示部署資料夾中的檔名與 `client_email` 的位置。
-
-### 3.2 助教：確認檔案並登入自己的帳號
-
-助教使用自己的學校 Google 帳號登入，該帳號須有備份資料夾的新增檔案權限。
-
-1. 建表或同步成績時，確認 `credentials.json` 在部署資料夾。只用 Google 試算表功能時，接續第 4.1 節。
-2. 使用備份功能時，確認 `drive_oauth_client.json` 在部署資料夾。
-3. 執行以下授權指令。
+使用備份功能時，助教執行以下指令，登入具有共享根目錄編輯權的學校 Google 帳號。只用成績同步或建表功能時，繼續第 4 節。
 
 PowerShell：
 
@@ -134,36 +120,31 @@ Bash：
 uv run python main.py --authorize-drive --oauth-client "drive_oauth_client.json"
 ```
 
-4. 在開啟的瀏覽器選擇自己的學校 Google 帳號，核對維護考試系統的同學提供的應用程式與要求的 Google Drive 權限，完成同意。Internal 應用程式需選專案所屬組織內的帳號。
-5. 回到終端機，確認出現 `Google Drive authorization saved locally.`，且資料夾產生 `drive_token.json`。
+1. 在開啟的瀏覽器選擇自己的學校 Google 帳號，核對維護考試系統的同學提供的應用程式與要求的 Google Drive 權限，完成同意。Internal 應用程式需選專案所屬組織內的帳號。
+2. 回到終端機，確認出現 `Google Drive authorization saved locally.`，且資料夾產生 `drive_token.json`。
 
-程式之後使用此助教的權杖自動更新認證，並以該帳號上傳備份。遇到組織封鎖提示時，將錯誤交給維護考試系統的同學確認政策。過期、撤銷或更換負責帳號時，重新執行本節指令。
-
-考前完成檢查：有 `drive_token.json`，並已記下登入的是哪個帳號。實際資料庫下載與上傳驗證安排在考試時部署，依第 6.3 或 8.3 節核對成功上傳。
+程式會使用這個學校 Google 帳號上傳備份。
 
 **預留圖 04｜助教登入。** 顯示助教選擇學校 Google 帳號的畫面，以及終端機成功訊息。
 
-## 4. 建立成績與備份目的地
+## 4. 確認共享根目錄權限並準備連結
 
-### 4.1 建立本次考試的 Google 試算表
+共享根目錄是本課程既有的 Google Drive 共用資料夾，本次考試目錄與備份目錄都已備妥。
 
-1. 使用助教的學校 Google 帳號建立一份空白試算表，以課程與考試名稱命名。
-2. 點選「共用」，將一般存取權設為 **知道連結的任何人 → 檢視者**。
-3. 另外加入第 3.1 節的 `client_email`，授予 **編輯者**。
-4. 複製試算表網址，保留供建表與 `.env` 設定使用。
+### 4.1 確認共享根目錄權限並準備 Google 試算表
 
-公開檢視會讓持有連結的人看到名冊與成績；若課程採限定分享，改成「受限制」並加入獲准查看的人。兩種方式都要另外保留 Google 服務帳戶的編輯權。[Google 分享權限說明](https://support.google.com/drive/answer/2494822)
+1. 開啟共享根目錄，點選「共用」。確認 `credentials.json` 中 `client_email` 對應的 Google 服務帳戶為 **編輯者**。
+2. 開啟既有的本次考試目錄，在其中建立 Google 試算表，以課程與考試名稱命名。
+3. 開啟試算表的「共用」，將一般存取權設為 **知道連結的任何人 → 檢視者**。
+4. 複製試算表網址。
 
-完成檢查：試算表的共用名單內，Google 服務帳戶電子郵件地址旁顯示「編輯者」。
+本次考試目錄及其中的 Google 試算表繼承共享根目錄的編輯權限。[Google 資料夾權限繼承說明](https://support.google.com/drive/answer/7166529?hl=en)
 
-**預留圖 05｜試算表共用視窗。** 同時標出一般存取權的檢視者及 Google 服務帳戶的編輯者，讓助教能分別核對。
+**預留圖 05｜共享根目錄權限。** 顯示 Google 服務帳戶的編輯者權限。
 
-### 4.2 建立 Google Drive 備份資料夾
+### 4.2 取得 Google Drive 備份資料夾連結
 
-1. 用第 3.2 節授權的帳號開啟 Google Drive 的「我的雲端硬碟」。
-2. 建立本次考試的備份資料夾，例如「程式設計期末考資料庫備份」。也可使用該帳號有新增檔案權限的既有資料夾。
-3. 保持備份資料夾為受限制存取，依交接需要授權助教與維護考試系統的同學。
-4. 開啟資料夾，複製網址。
+開啟既有的本次考試備份目錄，複製網址。
 
 以下兩種網址都可使用，`FOLDER_ID` 換成實際識別碼：
 
@@ -172,7 +153,7 @@ https://drive.google.com/drive/folders/FOLDER_ID
 https://drive.google.com/drive/u/5/folders/FOLDER_ID
 ```
 
-`/u/5/` 是瀏覽器帳號切換路徑；程式上傳時使用 `drive_token.json` 對應的帳號。完成檢查：授權帳號可開啟資料夾並新增檔案，且已複製正確網址。
+`/u/5/` 是瀏覽器帳號切換路徑；程式上傳時使用 `drive_token.json` 對應的帳號。
 
 **預留圖 06｜備份資料夾。** 標出資料夾名稱、網址與目前 Google 帳號，使用空白示範資料夾。
 
@@ -372,7 +353,7 @@ uv run python main.py --config "exam-config.json"
 
 ## 7. 功能三：只同步成績
 
-前置條件：維護考試系統的同學已依第 3.1 節交付 Google 試算表憑證；助教完成第 2 節、3.2 節第 1 項、4.1 節及第 5 節建表，取得後端網址與管理權杖。已有合規試算表時先核對名冊、前兩列表頭及本次題目配置。
+前置條件：助教完成第 2 節、第 3.1 節、第 4.1 節及第 5 節建表，取得後端網址與管理權杖。已有合規試算表時先核對名冊、前兩列表頭及本次題目配置。
 
 ### 7.1 準備設定
 
@@ -548,7 +529,7 @@ uv run python main.py --backup-only
 
 1. 完成第 10.2 節，保留上一場考試 Google 試算表與備份。
 2. 準備新考試名冊與完整考試設定檔，核對題目順序與配分。
-3. 依第 4 節建立新 Google 試算表與本次備份資料夾。
+3. 依第 4 節確認共享根目錄權限，準備新 Google 試算表與本次既有備份目錄的連結。
 4. 依第 5 節對新 Google 試算表建表。
 5. 更新各教室 `.env` 的新連結、後端資訊及教室，確認 Google Drive 授權仍有效。
 6. 考試時部署、各教室後端啟動後，依選用功能執行第 6、7 或 8 節的預覽／驗證，再開始常駐。
@@ -558,7 +539,7 @@ uv run python main.py --backup-only
 | 現象 | 檢查與處理 | 恢復後的確認 |
 | --- | --- | --- |
 | 找不到 `main.py`、設定檔案或 Microsoft Excel | 回到含 `main.py` 的部署資料夾，核對檔名、副檔名及相對路徑 | 重新執行原功能的預覽 |
-| Google 試算表 403、Permission denied、找不到試算表 | 核對 `SHEET_URL`、Google 服務帳戶 `client_email` 的編輯權及兩個 Google 應用程式介面是否啟用 | 建表／同步預覽成功，接著驗證實際操作 |
+| Google 試算表 403、Permission denied、找不到試算表 | 核對 `SHEET_URL` 與檔案是否在共享根目錄內；仍失敗時交由維護考試系統的同學處理 | 建表／同步預覽成功，接著驗證實際操作 |
 | `WorksheetNotFound` | 核對 `SHEET_TITLE` 與 Google 試算表下方來源分頁名稱；需要建表時先依第 5 節處理 | 同步預覽對應到正確教室 |
 | 後端 401／403 | 核對本教室後端根網址及後端管理權杖 | 重新預覽，並確認持續同步或備份成功 |
 | 連線失敗、等待逾時、重試後退出 | 依輸出的具體原因檢查教師機、網路及服務狀態，再重啟程序 | 確認第一輪與下一輪成功 |
@@ -591,7 +572,7 @@ uv run python main.py --backup-only
 
 ## 附錄 A：首次建立 Google 服務帳戶
 
-本附錄供具有 Google Cloud 專案管理權限的維護考試系統的同學，在首次建立或另行規劃重建服務帳戶時參考。日常部署依第 3.1 節維護既有 `credentials.json` 即可。建立憑證的畫面可對照 [Google 官方說明](https://developers.google.com/workspace/guides/create-credentials)。
+本附錄供具有 Google Cloud 專案管理權限的維護考試系統的同學，在首次建立或另行規劃重建服務帳戶時參考。日常部署沿用既有 `credentials.json`；更新流程見[附錄 C](#appendix-c)。建立憑證的畫面可對照 [Google 官方說明](https://developers.google.com/workspace/guides/create-credentials)。
 
 1. 開啟 [Google Cloud Console](https://console.cloud.google.com/)，選擇或建立供考試使用的專案。
 2. 在應用程式介面程式庫搜尋並啟用 Google 試算表應用程式介面（搜尋名稱：`Google Sheets API`）與 Google Drive 應用程式介面（搜尋名稱：`Google Drive API`）。
@@ -599,7 +580,7 @@ uv run python main.py --backup-only
 4. 在該服務帳戶的「金鑰」頁建立新金鑰，檔案格式選擇畫面上的 `JSON` 選項並下載。
 5. 將檔案命名為 `credentials.json`，放到部署資料夾。
 6. 記下憑證檔案的 `client_email`，連同 `credentials.json` 提供給負責部署的助教。
-7. 依第 4.1 節把目標 Google 試算表分享給此電子郵件地址，授予編輯者，再依第 5.2 節執行建表預覽模式驗證 Google 存取。
+7. 將本課程 Google Drive 共享根目錄分享給此電子郵件地址，授予編輯者；本次考試資料夾與其中檔案沿用繼承權限。
 
 <a id="appendix-b"></a>
 
@@ -614,3 +595,20 @@ uv run python main.py --backup-only
 5. 將此檔案提供給需要備份的助教，放在各自部署資料夾；同一應用程式的授權用戶端憑證檔案可供多位助教使用，每位助教各自完成第 3.2 節登入。
 
 Internal 允許同一組織內的學校 Google 帳號直接授權，無須逐一加入 Test users。若部署需使用組織外帳號，維護考試系統的同學改依 External 流程處理；External／Testing 須加入 Test users，這類 Google Drive 授權的更新權杖通常七天後失效。Internal 依組織政策管理，授權仍可能因撤銷或政策變更而失效。[Google 帳號授權狀態說明](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview)、[權杖有效期說明](https://developers.google.com/identity/protocols/oauth2#expiration)
+
+<a id="appendix-c"></a>
+
+## 附錄 C：維護與更新憑證
+
+### 更新 Google 服務帳戶金鑰
+
+1. 先停止使用該金鑰的同步程序。
+2. 向維護考試系統的同學取得更新版本，替換部署資料夾中的 `credentials.json`。
+3. 若 `client_email` 變更，將共享根目錄的編輯權授予更新後的 Google 服務帳戶。
+4. 考前使用建表預覽確認 Google 存取；考試時部署使用分數同步預覽，確認成功後恢復持續執行。
+
+### 更新 Google Drive 登入授權
+
+授權過期、撤銷或更換助教的學校 Google 帳號時，依第 3.2 節重新登入，更新 `drive_token.json`。若出現學校組織封鎖提示，由維護考試系統的同學確認組織政策。
+
+Google Drive 登入授權應用程式憑證更新時，由維護考試系統的同學提供新的 `drive_oauth_client.json`；替換後重新登入。
