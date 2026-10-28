@@ -28,7 +28,12 @@ Bash：
 uv sync --frozen
 ```
 
-本程式使用兩種不同身分。Sheets 沿用已建立的 Service account，維護其 `credentials.json`；Drive OAuth client JSON 由負責設定的人員交付，助教接收後登入自己的組織帳號完成 Drive 授權：
+助教向維護考試系統的同學取得以下檔案，放進程式資料夾：
+
+- `credentials.json`：讓程式讀寫成績試算表，沿用現有檔案即可。
+- `drive_oauth_client.json`：供 Drive 登入使用，沿用現有檔案即可。
+
+需要備份資料庫時，助教執行登入指令，用自己的學校 Google 帳號授權。完成後，程式會自動產生 `drive_token.json`，用於後續備份。
 
 | 用途 | Google 身分 | 檔案 |
 | --- | --- | --- |
@@ -37,22 +42,22 @@ uv sync --frozen
 
 **維護既有 Service account 憑證。**
 
-1. 向憑證保管人取得既有 Service account 的可用金鑰，保存為本專案資料夾中的 `credentials.json`。
+1. 向維護考試系統的同學取得既有 Service account 的可用金鑰，保存為本專案資料夾中的 `credentials.json`。
 2. 核對 JSON 裡的 `client_email`，下一步要把試算表分享給這個 email 並授予編輯權。
 3. 更新檔案前先停止同步程序。考前替換後使用建表 dry-run 驗證 Google 存取；考試時部署則先做分數同步 dry-run，確認成功再恢復持續同步。
 
 首次建立 Service account 的流程移至[助教手冊附錄 A](docs/ta-operation-guide.md#appendix-a)，日常部署使用既有憑證。
 
-**管理者事先準備：Drive OAuth 應用程式憑證。**
+**維護考試系統的同學事先準備：Drive OAuth 應用程式憑證。**
 
 1. 確認 Google Drive API 已啟用，在同一個 Cloud 專案設定 Google Auth Platform／OAuth 同意畫面的應用程式資訊與 Audience。
-2. 供組織內助教使用時，專案須歸屬該 Google Workspace／Cloud Identity 組織，Audience 選 **Internal**，並由組織管理員確認允許所需 Drive 存取。同組織帳號可授權，無須逐一加入 Test users。若使用 External 且發布狀態為 Testing，則將要備份的帳號加入 Test users。[Google Audience 說明](https://support.google.com/cloud/answer/15549945?hl=en)
+2. 供組織內助教使用時，專案須歸屬該 Google Workspace／Cloud Identity 組織，Audience 選 **Internal**，並由維護考試系統的同學確認學校組織政策允許所需 Drive 存取。同組織帳號可授權，無須逐一加入 Test users。若使用 External 且發布狀態為 Testing，則將要備份的帳號加入 Test users。[Google Audience 說明](https://support.google.com/cloud/answer/15549945?hl=en)
 3. 到 Clients／憑證建立 **Desktop app** OAuth client，下載 JSON，命名為 `drive_oauth_client.json`，放在本專案資料夾。
 4. 將 `credentials.json`、其 `client_email` 與 `drive_oauth_client.json` 安全交付給助教。OAuth client JSON 可供多位助教使用；個人授權 token 由每位助教自行登入產生。
 
 **助教操作：接收檔案並登入。**
 
-1. 將管理者提供的 `credentials.json`、`drive_oauth_client.json` 放在部署資料夾。
+1. 將維護考試系統的同學提供的 `credentials.json`、`drive_oauth_client.json` 放在部署資料夾。
 2. 執行以下指令，在開啟的瀏覽器登入自己的組織帳號，並完成授權；確認該帳號具有備份資料夾的新增檔案權限。Internal 應用程式需選專案所屬組織內的帳號。
 
 PowerShell：
@@ -73,19 +78,21 @@ Google External app 在 Testing 狀態下，這類授權的 refresh token 通常
 
 ### 2. 建立新的 Google Sheet 並設定存取權
 
-1. 使用考試管理帳號建立一份空白 Google 試算表，取好名稱。
+1. 使用助教的學校 Google 帳號建立一份空白 Google 試算表，取好名稱。
 2. 開啟「共用」，將「一般存取權」設成 **知道連結的任何人 → 檢視者**。這讓持有連結的人可以查看；**不要把一般存取權設為編輯者**。
 3. 在同一個共用視窗，另外加入 `credentials.json` 的 **`client_email`**，設為 **編輯者**。只有公開檢視權限，仍不足以讓程式寫入。
 4. 複製試算表網址。下一步初始化時先放進 `--sheet-url`，第 4 步再寫入 `.env`。
 5. 在 My Drive 建立或選定備份資料夾，例如 `db-backup`，確認第 1 步 OAuth 登入的帳號有新增檔案的權限，並複製資料夾網址。
 
-「知道連結的任何人」會讓持有連結的人看到名冊、學號與成績。若不需要公開檢視，可以改成「受限制」並只分享給監考者；只要 Service account 有編輯權限，程式仍可運作。[Google 分享權限說明](https://support.google.com/drive/answer/2494822)
+「知道連結的任何人」會讓持有連結的人看到名冊、學號與成績。若不需要公開檢視，可以改成「受限制」並只分享給助教與維護考試系統的同學；只要 Service account 有編輯權限，程式仍可運作。[Google 分享權限說明](https://support.google.com/drive/answer/2494822)
 
 **備份資料夾維持受限存取即可，不需要公開。** Service account 負責 Sheets，OAuth 登入帳號負責 Drive 備份，請分別確認兩者的權限。[Service account 存取說明](https://developers.google.com/workspace/guides/create-credentials#service-account)
 
 ### 3. 放入 roster 與 config，執行初始化指令
 
 將檔案放在專案資料夾，以下使用這些檔名：
+
+`roster.xlsx` 與 `exam-config.json` 都由助教提供，並確認是本次考試使用的版本。
 
 ```text
 ntut-exam-score-gsheet-syncer/
@@ -158,7 +165,7 @@ uv run python main.py --setup-sheet \
 
 #### 考前：填寫 .env
 
-本階段準備設定檔，可先取得並填入後端網址與管理員 token。
+本階段準備設定檔，可先取得並填入後端網址與管理權杖。
 
 首次部署先從範本建立 `.env`。以下指令會保留已存在的檔案；若 `.env` 已存在，直接編輯即可。
 
@@ -187,7 +194,7 @@ SHEET_TITLE=1222
 # 分數同步間隔（秒），持續執行時填正數
 INTERVAL=60
 
-# 本教室 v2 後端網址與管理員 token；資料庫備份也使用管理員 API
+# 本教室 v2 後端網址與管理權杖；資料庫備份也使用管理 API
 BACKEND_API_URL=http://localhost:3000
 ADMIN_TOKEN=replace-with-the-backend-admin-token
 
@@ -208,7 +215,7 @@ GOOGLE_TIMEOUT_SECONDS=30
 | `SHEET_TITLE` | 本教室的來源分頁：`1222`、`1223` 或 `335`；不可指向 `Combined`／`成績登記`。 |
 | `INTERVAL` | 分數同步間隔，填正數持續輪詢；以下使用 60 秒。 |
 | `BACKEND_API_URL` | 對應本教室的後端根網址，不加 `/admin/scores` 或 `/admin/backup`。 |
-| `ADMIN_TOKEN` | 後端管理員 token；不是學生 token，也不是 Google token。 |
+| `ADMIN_TOKEN` | 後端管理權杖，供程式讀取分數與下載資料庫。 |
 | `BACKUP_FOLDER` | 備份資料夾網址或 ID；留空會停用備份。支援含 `/drive/u/5/folders/` 的網址。 |
 | `BACKUP_INTERVAL` | 備份間隔，填正數持續備份，預設 300 秒。與分數同步計時分開。 |
 | `CLASSROOM` | 備份檔名的教室名稱；未填時使用 `SHEET_TITLE`。 |
@@ -255,7 +262,7 @@ uv run python main.py --config "exam-config.json"
 
 ## 備份與錯誤處理
 
-後端的管理員 `GET /admin/backup` 回傳二進位 `.sqlite` 快照，不是文字 SQL dump。檔名為 `classroom_timestamp.sqlite`，例如 `1222_20261026T143000123456+0800.sqlite`，使用 Asia/Taipei 時區與微秒時間。首次立即備份，後續在上次完成後等待 `BACKUP_INTERVAL`；同步與備份共用程序時依序執行，不會重疊。
+後端的 `GET /admin/backup` 管理 API 回傳二進位 `.sqlite` 快照，不是文字 SQL dump。檔名為 `classroom_timestamp.sqlite`，例如 `1222_20261026T143000123456+0800.sqlite`，使用 Asia/Taipei 時區與微秒時間。首次立即備份，後續在上次完成後等待 `BACKUP_INTERVAL`；同步與備份共用程序時依序執行，不會重疊。
 
 下載後檢查完整性、SQLite 檔頭與唯讀 integrity check，再原樣上傳。Google SDK 更新認證後重送會保留相同 Drive 檔案 ID 與完整內容。若上傳回應遺失或截斷，會依該 ID 核對檔名、目的地、大小與 MD5，不盲目重傳。驗證失敗就報錯；暫存檔會清理，既有雲端備份保留。[Google 上傳說明](https://developers.google.com/workspace/drive/api/guides/manage-uploads)
 
